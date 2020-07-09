@@ -734,8 +734,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 		int newOfferValueLost = utils.pointsLostInOffer(o);
 		int oldOfferValueLost = utils.pointsLostInOffer(allocated);
 
-		float oldGainRatio = oldOfferValue/oldOfferValueLost;
-		float newGainRatio = newOfferValue/newOfferValueLost;
+		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
+		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
 		
 		System.out.println("Agent can receive a maximum of " + totalResourceValueThisRound + " points this round");
 		System.out.println("Last offer, agent received " + oldOfferValue + " points, and lost " + oldOfferValueLost + " points to adversary");
@@ -747,6 +747,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
 		return isOfferGood;
 	}
+	
+
 	/**
 	 * Every agent needs a name to select the art that will be used. Currently only 4 names are supported: Brad, Ellie, Rens, and Laura.
 	 * Note: This is NOT the name that users will see when they negotiate with the agent.

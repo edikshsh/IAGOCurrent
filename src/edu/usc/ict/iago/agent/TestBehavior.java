@@ -105,16 +105,95 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		} while(totalFree > 0); // Continue calling getNextOffer while there are still items left unclaimed
 		return propose;
 	}
+	
+	
+	public Offer copyOffer(Offer o) {
+		Offer copiedOffer = new Offer(game.getNumIssues());
+		for(int issue = 0; issue < game.getNumIssues(); issue++)
+			copiedOffer.setItem(issue, o.getItem(issue));
+		return copiedOffer;
+	}
+	
+	@Override
+	public Offer getCounterOffer(Offer o) {
+		
+		Offer counterOffer = new Offer(game.getNumIssues());
+		
+		
+		
+		return counterOffer;
+	}
+	
+	public ArrayList<Integer> getAgentResourceValues() {
+		var playerResourceValuesMap = game.getSimplePoints(StaticData.playerId);
+		ArrayList<Integer> playerResourceValues = new ArrayList<>();
+		playerResourceValuesMap.forEach((name,value) -> playerResourceValues.add(value));
+		debug("getPlayerResourceValues()");
+		playerResourceValuesMap.forEach((name,value) -> System.out.println("Resource " + name + " is worth " + value));
+		return playerResourceValues;
+	}
+	
+	// gets an offer and returns an array of the resources not allocated to either of the players
+	public int[] getFreeResources(Offer o) {
+		int[] freeResources = new int[game.getNumIssues()];
+		
+		for(int issue = 0; issue < game.getNumIssues(); issue++)
+		{
+			freeResources[issue] = allocated.getItem(issue)[1];
+		}
+		return freeResources;
+	}
+	
+	// Gets an offer and returns the 
+	public int getPlayerFavoriteFreeResourceInOffer(Offer o)
+	{
+		int[] freeResources = getFreeResources(o);
+		int favoriteResource = -1;
+		var playerPref = utils.getMinimaxOrdering(); 
+		
+		int max = game.getNumIssues() + 1;
+		for(int i  = 0; i < game.getNumIssues(); i++) {
+			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
+			if(freeResources[i] > 0 && playerPref.get(i) < max)
+			{
+				favoriteResource = i;
+				max = playerPref.get(i);
+			}
+		}
+		
+		return favoriteResource;
+	}
 
+	// Gets an offer and returns the 
+	public int getAgentFavoriteFreeResourceInOffer(Offer o)
+	{
+		int[] freeResources = getFreeResources(o);
+		int favoriteResource = -1;
+		var agentPref = utils.getMyOrdering(); 
+		
+		int max = game.getNumIssues() + 1;
+		for(int i  = 0; i < game.getNumIssues(); i++) {
+			System.out.println("Issue number " + i + " for the agent is number " + agentPref.get(i));
+		
+			if(freeResources[i] > 0 && agentPref.get(i) < max)
+			{
+				favoriteResource = i;
+				max = agentPref.get(i);
+			}
+		
+		}
+		
+		return favoriteResource;
+	}
+	
+	
 	@Override
 	public Offer getNextOffer(History history) 
 	{	
 		debug("getNextOffer()");
 		
 		//start from where we currently have accepted
-		Offer propose = new Offer(game.getNumIssues());
-		for(int issue = 0; issue < game.getNumIssues(); issue++)
-			propose.setItem(issue, allocated.getItem(issue));
+		Offer propose = copyOffer(allocated);
 		
 		
 		// Assign ordering to the player based on perceived preferences. Ideally, they would be opposite the agent's (integrative)
@@ -146,26 +225,12 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		}
 		
 		// Find most valued issue for player and VH (of the issues that have undeclared items)
-		int max = game.getNumIssues() + 1;
-		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
-			if(free[i] > 0 && playerPref.get(i) < max)
-			{
-				userFave = i;
-				max = playerPref.get(i);
-			}
-		}
-		max = game.getNumIssues() + 1;
-		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the agent is number " + vhPref.get(i));
+		opponentFave = getAgentFavoriteFreeResourceInOffer(allocated);
+		userFave = getPlayerFavoriteFreeResourceInOffer(allocated);
 		
-			if(free[i] > 0 && vhPref.get(i) < max)
-			{
-				opponentFave = i;
-				max = vhPref.get(i);
-			}
-		
-		}
+		System.out.println("opponentFave = " + opponentFave);
+		System.out.println("userFave = " + userFave);
+
 		//is there ledger to work with?
 		if(lb == LedgerBehavior.NONE) //this agent doesn't care
 		{

@@ -51,6 +51,13 @@ public abstract class IAGOCoreBehavior implements BehaviorPolicy
 	 * @return the first offer
 	 */
 	protected abstract Offer getFirstOffer(History history);
+	
+	/**
+	 * Gets a proposed offer.
+	 * @param proposed offer
+	 * @return a counter offer
+	 */
+	protected abstract Offer getCounterOffer(Offer o);
 
 	/**
 	 * Gets the amount of points that the agent requires to be ahead of its opponent before accepting.
