@@ -106,21 +106,38 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		return propose;
 	}
 	
+
 	
-	public Offer copyOffer(Offer o) {
-		Offer copiedOffer = new Offer(game.getNumIssues());
-		for(int issue = 0; issue < game.getNumIssues(); issue++)
-			copiedOffer.setItem(issue, o.getItem(issue));
-		return copiedOffer;
+	public void moveResource(Offer o, int resourceNum, int from, int to) {
+		int[] currResourceDistribution = o.getItem(resourceNum);
+		currResourceDistribution[from] -= 1;
+		currResourceDistribution[to] += 1;
+
+		o.setItem(resourceNum, currResourceDistribution);
+		
 	}
+	
 	
 	@Override
 	public Offer getCounterOffer(Offer o) {
 		
 		Offer counterOffer = new Offer(game.getNumIssues());
+		counterOffer.setOffer(o);
+
+		int playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
+		int agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
+
+		while(playerFavoriteResource != agentFavoriteResource) {
+			System.out.print("Counter offer = ");
+			System.out.println(counterOffer.toString());
+			System.out.println("Giving player resource " + playerFavoriteResource + " and giving agent resource " + agentFavoriteResource);
+			moveResource(counterOffer, playerFavoriteResource, this.utils.adversaryRow, this.utils.myRow);
+			moveResource(counterOffer, agentFavoriteResource, this.utils.myRow, this.utils.adversaryRow);
+			playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
+			agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
+		}
 		
-		
-		
+		debug("getCounterOffer() done"); 
 		return counterOffer;
 	}
 	
@@ -133,58 +150,6 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		return playerResourceValues;
 	}
 	
-	// gets an offer and returns an array of the resources not allocated to either of the players
-	public int[] getFreeResources(Offer o) {
-		int[] freeResources = new int[game.getNumIssues()];
-		
-		for(int issue = 0; issue < game.getNumIssues(); issue++)
-		{
-			freeResources[issue] = allocated.getItem(issue)[1];
-		}
-		return freeResources;
-	}
-	
-	// Gets an offer and returns the 
-	public int getPlayerFavoriteFreeResourceInOffer(Offer o)
-	{
-		int[] freeResources = getFreeResources(o);
-		int favoriteResource = -1;
-		var playerPref = utils.getMinimaxOrdering(); 
-		
-		int max = game.getNumIssues() + 1;
-		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
-			if(freeResources[i] > 0 && playerPref.get(i) < max)
-			{
-				favoriteResource = i;
-				max = playerPref.get(i);
-			}
-		}
-		
-		return favoriteResource;
-	}
-
-	// Gets an offer and returns the 
-	public int getAgentFavoriteFreeResourceInOffer(Offer o)
-	{
-		int[] freeResources = getFreeResources(o);
-		int favoriteResource = -1;
-		var agentPref = utils.getMyOrdering(); 
-		
-		int max = game.getNumIssues() + 1;
-		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the agent is number " + agentPref.get(i));
-		
-			if(freeResources[i] > 0 && agentPref.get(i) < max)
-			{
-				favoriteResource = i;
-				max = agentPref.get(i);
-			}
-		
-		}
-		
-		return favoriteResource;
-	}
 	
 	
 	@Override
@@ -193,8 +158,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		debug("getNextOffer()");
 		
 		//start from where we currently have accepted
-		Offer propose = copyOffer(allocated);
-		
+		Offer propose = utils.copyOffer(allocated);
 		
 		// Assign ordering to the player based on perceived preferences. Ideally, they would be opposite the agent's (integrative)
 		ArrayList<Integer> playerPref = utils.getMinimaxOrdering(); 
@@ -225,8 +189,8 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		}
 		
 		// Find most valued issue for player and VH (of the issues that have undeclared items)
-		opponentFave = getAgentFavoriteFreeResourceInOffer(allocated);
-		userFave = getPlayerFavoriteFreeResourceInOffer(allocated);
+		opponentFave = utils.getAgentFavoriteFreeResourceInOffer(allocated);
+		userFave = utils.getPlayerFavoriteFreeResourceInOffer(allocated);
 		
 		System.out.println("opponentFave = " + opponentFave);
 		System.out.println("userFave = " + userFave);

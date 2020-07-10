@@ -26,6 +26,7 @@ class AgentUtilsExtension
 	protected ArrayList<Boolean>  previouslyOffered = new ArrayList<Boolean>();
 	public boolean competitive = false;
 	public int myRow;
+	public int freeRow = 1;
 	public int adversaryRow;
 	private boolean isFixedPie = false;
 
@@ -700,6 +701,94 @@ class AgentUtilsExtension
 	}
 
 
+	
+	// Added functions:
+	/**
+	 * return a deep copy of an offer
+	 * @param the offer to make a deep copy of
+	 */
+	protected Offer copyOffer(Offer offer)
+	{
+		Offer newOffer = new Offer(game.getNumIssues());
+		newOffer.setOffer(offer);
+		return newOffer;
+	}
+	
+	
+	/**
+	 * Get the resources allocated to any of the players or those that are free
+	 * @offer the offer from which to read the resources
+	 * @allocatedTo the allocation (allocated to agent, player or free), 
+	 * myRow = allocated to agent
+	 * freeRow = not allocated
+	 * adversaryRow  allocated to player
+	 */
+	protected int[] getResourcesFromOffer(Offer offer, int allocatedTo)
+	{
+		int[] resources = new int[game.getNumIssues()];
+		
+		for(int issue = 0; issue < game.getNumIssues(); issue++)
+		{
+			resources[issue] = offer.getItem(issue)[allocatedTo];
+		}
+		return resources;
+	}
+	
+	public int getPlayerFavoriteFreeResourceInOffer(Offer o)
+	{
+		int[] freeResources = this.getResourcesFromOffer(o,this.freeRow);
+		int favoriteResource = -1;
+		var playerPref = this.getMinimaxOrdering(); 
+		
+		int max = game.getNumIssues() + 1;
+		for(int i  = 0; i < game.getNumIssues(); i++) {
+			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
+			if(freeResources[i] > 0 && playerPref.get(i) < max)
+			{
+				favoriteResource = i;
+				max = playerPref.get(i);
+			}
+		}
+		
+		return favoriteResource;
+	}
+
+	public int getAgentFavoriteFreeResourceInOffer(Offer o)
+	{
+		int[] freeResources = this.getResourcesFromOffer(o,this.freeRow);
+		int favoriteResource = -1;
+		var agentPref = this.getMyOrdering(); 
+		
+		int max = game.getNumIssues() + 1;
+		for(int i  = 0; i < game.getNumIssues(); i++) {
+			System.out.println("Issue number " + i + " for the agent is number " + agentPref.get(i));
+		
+			if(freeResources[i] > 0 && agentPref.get(i) < max)
+			{
+				favoriteResource = i;
+				max = agentPref.get(i);
+			}
+		
+		}
+		return favoriteResource;
+	}
+	
+	public int[][] offerToMatrix(Offer o){
+		int[][] mat = new int[3][game.getNumIssues()];
+		for(int i  = 0; i < game.getNumIssues(); i++) {
+			var item = o.getItem(i);
+			for (int j=0; j<3; j++) {
+				mat[j][i] = item[j];
+			}
+		}
+		
+		return mat;
+		
+	}
+	
+	
+	
+	
 
 }
 
