@@ -437,15 +437,15 @@ public abstract class IAGOCoreVH extends GeneralVH
 		{
 			Offer o = e.getOffer();//incoming offer
 			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
-			Offer counterOffer = behavior.getCounterOffer(o);
-			System.out.println("Original offer :");
-			for (int i=0; i<o.getIssueCount(); i++) {
-				System.out.print(o.getItem(i));
-			}
-			System.out.println("Counter offer :");
-			for (int i=0; i<counterOffer.getIssueCount(); i++) {
-				System.out.print(counterOffer.getItem(i));
-			}
+//			Offer counterOffer = behavior.getCounterOffer(o);
+//			System.out.println("Original offer :");
+//			for (int i=0; i<o.getIssueCount(); i++) {
+//				System.out.print(o.getItem(i));
+//			}
+//			System.out.println("Counter offer :");
+//			for (int i=0; i<counterOffer.getIssueCount(); i++) {
+//				System.out.print(counterOffer.getItem(i));
+//			}
 			
 			ServletUtils.log("Agent Normalized ordering: " + utils.getMyOrdering(), ServletUtils.DebugLevels.DEBUG);
 			ServletUtils.log("Optimal ordering: " + utils.getMinimaxOrdering(), ServletUtils.DebugLevels.DEBUG);

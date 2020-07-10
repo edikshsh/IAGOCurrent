@@ -123,6 +123,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		
 		Offer counterOffer = new Offer(game.getNumIssues());
 		counterOffer.setOffer(o);
+		var a = utils.offerToMatrix(o);
 
 		int playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
 		int agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
