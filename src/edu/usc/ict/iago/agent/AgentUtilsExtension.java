@@ -783,10 +783,71 @@ class AgentUtilsExtension
 		}
 		
 		return mat;
+	}
+	
+	public Offer matrixToOffer(int[][] offerMatrix) {
+		Offer offer = new Offer(game.getNumIssues());
+		for(int i=0; i < game.getNumIssues(); i++) {
+			offer.setItem(i, new int[] {offerMatrix[0][i], offerMatrix[1][i], offerMatrix[2][i]});
+		}
+		return offer;
 		
 	}
 	
-	
+	// Exchanges 1 item of the best resource for the player and agent
+	// The agent gives the player 1 item of the best resource it has for the player, and the player does the same
+	public Offer exchangeBestResources(Offer o) {
+		var offerMat = offerToMatrix(o);
+		var agentResourcePreferences = getMinimaxOrdering(); 
+		var playerResourcePreferences = getMyOrdering();
+		
+//		var agentResourcePreferencesIndices = new ArrayList<Integer>();
+//		var playerResourcePreferencesIndices = new ArrayList<Integer>();
+//		
+//		for (int i=1; i<=agentResourcePreferences.size(); i++) {
+//			for(int j=0; j< agentResourcePreferences.size(); j++) {
+//				if (agentResourcePreferences.get(j) == i) {
+//					agentResourcePreferencesIndices.add(j);
+//				}
+//			}
+//		}
+//		
+//		for (int i=1; i<=playerResourcePreferences.size(); i++) {
+//			for(int j=0; j< playerResourcePreferences.size(); j++) {
+//				if (playerResourcePreferences.get(j) == i) {
+//					playerResourcePreferencesIndices.add(j);
+//				}
+//			}
+//		}
+		
+		int[] resourceImportance = new int[game.getNumIssues()];
+		
+		int max=-9;
+		int min=9;
+		int maxResource = -1;
+		int minResource = -1;
+		
+		for (int i=0; i<game.getNumIssues(); i++) {
+			resourceImportance[i] = playerResourcePreferences.get(i) - agentResourcePreferences.get(i);
+			if (resourceImportance[i] > max && offerMat[adversaryRow][i] > 0) {
+				max = resourceImportance[i];
+				maxResource = offerMat[adversaryRow][i];
+			}
+		    if (resourceImportance[i] < min && offerMat[myRow][i] > 0) {
+				min = resourceImportance[i];
+				minResource = offerMat[myRow][i];
+			}
+		}
+		
+		offerMat[adversaryRow][minResource] += 1;
+		offerMat[myRow][minResource] -= 1;
+
+		offerMat[adversaryRow][maxResource] -= 1;
+		offerMat[myRow][maxResource] += 1;
+		
+		return matrixToOffer(offerMat);
+		
+	}
 	
 	
 

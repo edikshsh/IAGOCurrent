@@ -436,7 +436,10 @@ public abstract class IAGOCoreVH extends GeneralVH
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
 			Offer o = e.getOffer();//incoming offer
-			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
+//			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
+//			Offer temp = utils.exchangeBestResources(o);
+//			System.out.println("Original offer: " + o.toString());
+//			System.out.println("New offer: " + temp.toString());
 //			Offer counterOffer = behavior.getCounterOffer(o);
 //			System.out.println("Original offer :");
 //			for (int i=0; i<o.getIssueCount(); i++) {
