@@ -1,5 +1,6 @@
 package edu.usc.ict.iago.agent;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import javax.websocket.Session;
@@ -32,6 +33,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
 	StackDivide stackDivideAlgorithm;
+	State currState;
+	private HashMap<String, State> stateMachine;
 
 	private class Ledger
 	{
@@ -40,6 +43,16 @@ public abstract class IAGOCoreVH extends GeneralVH
 		int offerLedger = 0;  //favors are moved here and consumed from verbal when offer is made.  Positive means agent has made a favorable offer.
 	}
 	
+	// This enum will decide what algorithm we will use
+	// Default is the original implementation
+	enum State {
+		 STACKDIVIDE,
+		 RESOURCEDIVIDE,
+		 LYING,
+		 PLAYEROFFER,
+		 PLAYEROFFER2,
+	 	 DEFAULT
+	 }
 
 
 	/**
@@ -67,9 +80,20 @@ public abstract class IAGOCoreVH extends GeneralVH
 
 		this.messages.setUtils(utils);
 		this.behavior.setUtils(utils);
-		
+		resetOnNewRound();
+		initStateMachine();
+	}
+	
+	public void resetOnNewRound() {
+		currState = State.STACKDIVIDE;
 		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
 
+	}
+	
+	private void initStateMachine() {
+		stateMachine = new HashMap<String, IAGOCoreVH.State>();
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
 	}
 	
 	/**
@@ -176,27 +200,48 @@ public abstract class IAGOCoreVH extends GeneralVH
 	
 	/**
 	 * Agents work by responding to various events. This method describes how core agents go about selecting their responses.
-	 * Every event will first be passed to our new functions, and then to the original getEventResponse if need be
+	 * Every event will first be passed to our new functions, and then to the original getEventResponse (stateDefault function) if need be
 	 * @param e the Event that the agent will respond to.
 	 * @return a list of Events in response to the initial Event.
 	 */
 	@Override
 	public LinkedList<Event> getEventResponse(Event e){
-		LinkedList<Event> resp;
-		if (!stackDivideAlgorithm.done && stackDivideAlgorithm.doesAcceptEvent(e)) {
-			resp = stackDivideAlgorithm.start(e);
-			return resp;
-		}
+		LinkedList<Event> resp = new LinkedList<Event>();
 		
-		return getEventResponseDefault(e);
+		switch (currState)
+		{
+			case STACKDIVIDE:
+				resp = stateStackDivide(e);
+				break;
+			case DEFAULT:
+				resp = stateDefault(e);
+				break;
+			default:
+				resp = stateDefault(e);
+				break;
+		}
+		return resp;
 	}
 
 
+	private LinkedList<Event> stateStackDivide(Event e){
+		LinkedList<Event> resp;
+		if (stackDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && stackDivideAlgorithm.doesAcceptEvent(e)) {
+			resp = stackDivideAlgorithm.start(e);
+			if (stackDivideAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
+				System.out.println("stackDivideAlgorithm done with state " + stackDivideAlgorithm.blState.toString());
+				currState = stateMachine.get(currState.toString() + "__" + stackDivideAlgorithm.blState.toString());
+			}
+			return resp;
+		}
+		
+		return stateDefault(e);
+	}
 
-	public LinkedList<Event> getEventResponseDefault(Event e)
+	private LinkedList<Event> stateDefault(Event e)
 	{
 		LinkedList<Event> resp = new LinkedList<Event>();
-		checkStackDivide(e);
+//		checkStackDivide(e);
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!
 			IMPORTANT: between GAME_END and GAME_START, the gameSpec stored in the superclass is undefined.

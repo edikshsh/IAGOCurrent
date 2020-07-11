@@ -9,7 +9,7 @@ import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
 
-public class StackDivide {
+public class StackDivide extends BusinessLogic {
 	
 	private IAGOCoreVH agentCore;
 	private AgentUtilsExtension utils;
@@ -21,7 +21,6 @@ public class StackDivide {
 	private StateEventController<State> stateEventController; // Just here to let us use the StateEvent functions (can't be static because functions are generic)
 	public State currState = State.START;
 	private Offer stateStartSuggestedOffer = null;
-	public boolean done=false;
 	
 	enum State {
 		 START,
@@ -63,6 +62,7 @@ public class StackDivide {
 		this.agentCore = agentCore;
 		this.game = game;
 		this.behavior = behavior;
+		this.blState=BLState.ONGOING;
 		this.stateEventController = new StateEventController<StackDivide.State>();
 		massMachineStates(State.START, State.END, null, null);
 		massMachineStates(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT);
@@ -154,14 +154,13 @@ public class StackDivide {
 			}
 			else {
 				// Does the player own the agent a favor, or no one owns anyone a favor
-				if (utils.getLedger() >= 0) {
-					
-					// Ask for the bigger part in exchange for a favor
-					resp.add(askFavor());
-				} else {
-					
+				if (agentOwsAFavor) {
 					// Give the bigger part in exchange for a favor
 					resp.add(returnFavor());
+
+				} else {
+					// Ask for the bigger part in exchange for a favor
+					resp.add(askFavor());
 				}
 			}
 		}
@@ -194,6 +193,7 @@ public class StackDivide {
 					"Aww",(int) (1000 * game.getMultiplier())));
 
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "sad", 2000, (int) (100*game.getMultiplier())));	
+			this.blState = BLState.FAILURE;
 			
 		} else {
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS,
@@ -201,8 +201,9 @@ public class StackDivide {
 
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "happy", 2000, (int) (100*game.getMultiplier())));	
 			behavior.allocated = stateStartSuggestedOffer;
+			this.blState = BLState.SUCCESS;
+
 		}
-		done=true;
 		return resp;
 	}
 

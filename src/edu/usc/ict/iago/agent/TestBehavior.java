@@ -42,6 +42,13 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		super();
 		this.lb = lb;
 	}
+	
+	public void resetOnNewRound() {
+		allocated = new Offer(game.getNumIssues());
+		for (int i=0; i<game.getNumIssues(); i++) {
+			allocated.setItem(i, new int[] {0,game.getIssueQuants()[i],0});
+		}
+	}
 		
 	@Override
 	protected void setUtils(AgentUtilsExtension utils)
