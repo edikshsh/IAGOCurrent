@@ -5,6 +5,7 @@ import java.util.LinkedList;
 
 import javax.websocket.Session;
 
+import edu.usc.ict.iago.agent.BusinessLogic.BLState;
 import edu.usc.ict.iago.utils.Event;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.GeneralVH;
@@ -33,6 +34,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
 	StackDivide stackDivideAlgorithm;
+	private final State firstState = State.STACKDIVIDE;
 	State currState;
 	private HashMap<String, State> stateMachine;
 
@@ -85,7 +87,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 	
 	public void resetOnNewRound() {
-		currState = State.STACKDIVIDE;
+		currState = firstState;
 		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
 
 	}
@@ -226,7 +228,13 @@ public abstract class IAGOCoreVH extends GeneralVH
 
 	private LinkedList<Event> stateStackDivide(Event e){
 		LinkedList<Event> resp;
-		if (stackDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && stackDivideAlgorithm.doesAcceptEvent(e)) {
+		
+		if(stackDivideAlgorithm.blState == BLState.START) {
+			resp = stackDivideAlgorithm.start(e);
+			System.out.println("stackDivideAlgorithm started");
+			return resp;
+		}
+		else if (stackDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && stackDivideAlgorithm.doesAcceptEvent(e)) {
 			resp = stackDivideAlgorithm.start(e);
 			if (stackDivideAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
 				System.out.println("stackDivideAlgorithm done with state " + stackDivideAlgorithm.blState.toString());

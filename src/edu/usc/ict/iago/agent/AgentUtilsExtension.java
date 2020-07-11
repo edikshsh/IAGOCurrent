@@ -342,6 +342,21 @@ class AgentUtilsExtension
 	}
 	
 	/**
+	 * Eliminates all invalid orderings by looking at preferences, the oldest ones first.
+	 */
+	public void reconcileContradictionsAll() {
+		if(reconcileContradictions())
+		{
+			//we simply drop the oldest expressed preference until we are reconciled.  This is not the best method, as it may not be the the most efficient route.
+			int overflowCount = 0;
+			while(reconcileContradictions() && overflowCount < 20)
+			{
+				overflowCount++;
+			}
+		}
+	}
+	
+	/**
 	 * Eliminates invalid orderings by looking at preferences, the oldest ones first.
 	 * @return true if there are no valid orderings, false otherwise
 	 */
