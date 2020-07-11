@@ -31,7 +31,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private boolean disable = false;	//adding a disabler check to help with agent vs. P++ functionality (note this will only be added to corevh and not the ++ version)
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
-	
+	StackDivide stackDivideAlgorithm;
+
 	private class Ledger
 	{
 		int ledgerValue = 0; //favors are added to the final ledger iff the offer was accepted, otherwise discarded.  Positive means agent has conducted a favor.
@@ -66,6 +67,9 @@ public abstract class IAGOCoreVH extends GeneralVH
 
 		this.messages.setUtils(utils);
 		this.behavior.setUtils(utils);
+		
+		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
+
 	}
 	
 	/**
@@ -148,7 +152,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 	
 	private void checkStackDivide(Event e) {
-		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game);
+		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
 		System.out.println(stackDivideAlgorithm.doesAcceptEvent(e));
 		Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS, "pos msg", (int) (100*game.getMultiplier()));
 		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
@@ -170,14 +174,26 @@ public abstract class IAGOCoreVH extends GeneralVH
 		stackDivideAlgorithm.start(e2);
 	}
 	
-
 	/**
 	 * Agents work by responding to various events. This method describes how core agents go about selecting their responses.
+	 * Every event will first be passed to our new functions, and then to the original getEventResponse if need be
 	 * @param e the Event that the agent will respond to.
 	 * @return a list of Events in response to the initial Event.
 	 */
 	@Override
-	public LinkedList<Event> getEventResponse(Event e)
+	public LinkedList<Event> getEventResponse(Event e){
+		LinkedList<Event> resp;
+		if (!stackDivideAlgorithm.done && stackDivideAlgorithm.doesAcceptEvent(e)) {
+			resp = stackDivideAlgorithm.start(e);
+			return resp;
+		}
+		
+		return getEventResponseDefault(e);
+	}
+
+
+
+	public LinkedList<Event> getEventResponseDefault(Event e)
 	{
 		LinkedList<Event> resp = new LinkedList<Event>();
 		checkStackDivide(e);

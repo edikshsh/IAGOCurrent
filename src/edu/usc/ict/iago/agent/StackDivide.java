@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import edu.usc.ict.iago.utils.Event;
+import edu.usc.ict.iago.utils.Event.EventClass;
+import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
 
@@ -12,25 +14,63 @@ public class StackDivide {
 	private IAGOCoreVH agentCore;
 	private AgentUtilsExtension utils;
 	private GameSpec game;
-	public boolean agentOwsAFavor = false;
+	private TestBehavior behavior;
+	public static boolean agentOwsAFavor = false;
 //	private HashMap<Tuple<State, String>, State> stateMachine;
 //	private HashMap<StateEvent, State> stateMachine;
 	private StateEventController<State> stateEventController; // Just here to let us use the StateEvent functions (can't be static because functions are generic)
 	public State currState = State.START;
+	private Offer stateStartSuggestedOffer = null;
+	public boolean done=false;
 	
 	enum State {
 		 START,
 	 	 END
 	 }
+	
+	//Creates many states, fills null parameters with all possible values
+	private void massMachineStates(State start, State target, Event.EventClass ec, Event.SubClass esc) {
+		State[] startingStates = new State[] {start};
+		if (start == null) {
+			startingStates = State.values();
+		}
+		
+		Event.EventClass[] eventClasses = new Event.EventClass[] {ec};
+		if (ec == null) {
+			eventClasses = Event.EventClass.values();
+		}
+		
+		Event.SubClass[] eventSubClasses = new Event.SubClass[] {esc};
+		if (esc == null) {
+			eventSubClasses = Event.SubClass.values();
+		}
+		
+		for (State startingState: startingStates){
+			for (Event.EventClass eventClass: eventClasses){
+				for (Event.SubClass eventSubClass: eventSubClasses){
+					// Skip unnecessary entries
+					if (eventClass == Event.EventClass.SEND_MESSAGE || eventSubClass == Event.SubClass.NONE) {
+						stateEventController.addState(startingState, target, eventClass, eventSubClass);
+					}
+				}
+			}
+		}
+		
+	}
 
-	public StackDivide(AgentUtilsExtension utils, IAGOCoreVH agentCore, GameSpec game) {
+	public StackDivide(AgentUtilsExtension utils, IAGOCoreVH agentCore, GameSpec game, TestBehavior behavior) {
 		this.utils = utils;
 		this.agentCore = agentCore;
 		this.game = game;
-		this.stateEventController = new StateEventController<StackDivide.State>(); // Have to create the controller after the hashmap
-		stateEventController.addState(State.START, State.START, Event.EventClass.SEND_EXPRESSION, Event.SubClass.NONE);
-		stateEventController.addState(State.START, State.END, Event.EventClass.SEND_MESSAGE, null);
-		stateEventController.addState(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS);
+		this.behavior = behavior;
+		this.stateEventController = new StateEventController<StackDivide.State>();
+		massMachineStates(State.START, State.END, null, null);
+		massMachineStates(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT);
+		massMachineStates(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT);
+
+//		stateEventController.addState(State.START, State.START, Event.EventClass.SEND_EXPRESSION, Event.SubClass.NONE);
+//		stateEventController.addState(State.START, State.END, Event.EventClass.SEND_MESSAGE, null);
+//		stateEventController.addState(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS);
 	}
 	
 	/**
@@ -43,14 +83,14 @@ public class StackDivide {
 		return stateEventController.doesAcceptEvent(e, currState); 
 	}
 	
-	/**
-	 * Converts an event to StateEvents to be used as keys in the stateMachine. 
-	 * @param e: The Event used.
-	 * @return stateMachine keys to be searched
-	 */
-	private StateEvent<State>[] convertEventToTypes(Event e){
-		return stateEventController.convertEventToTypes(e, currState);
-	}
+//	/**
+//	 * Converts an event to StateEvents to be used as keys in the stateMachine. 
+//	 * @param e: The Event used.
+//	 * @return stateMachine keys to be searched
+//	 */
+//	private StateEvent<State>[] convertEventToTypes(Event e){
+//		return stateEventController.convertEventToTypes(e, currState);
+//	}
 	
 	/**
 	 * Starting point of the algorithm
@@ -59,19 +99,15 @@ public class StackDivide {
 	 */
 	public LinkedList<Event> start(Event e){
 //		System.out.println("StackDivide start()");
-		State newState = null;
-		StateEvent<State>[] eventTypes = convertEventToTypes(e);
-		for (StateEvent<State> eventType : eventTypes) {
-//			System.out.println("Checking event " + eventType);
-			if ((newState = stateEventController.getState(eventType)) != null) {
-//				System.out.println("Event " + eventType + " is legal");
-				break;
-			}
-		}
+		StateEvent<State> stateEvent = new StateEvent<State>(currState, e.getType(), e.getSubClass());
+		State newState = stateEventController.getState(stateEvent);
+
+		
 		if (newState != null) {
 //			System.out.println("Changing states: " + currState + " -> " + newState);
+			LinkedList<Event> returnedEvents = funcByState(e);
 			currState = newState;
-			return funcByState(e);
+			return returnedEvents;
 		}
 		return null;
 	}
@@ -94,27 +130,12 @@ public class StackDivide {
 
 	}
 	
-	private LinkedList<Event> stateStart(Event e){
-//		System.out.println("StackDivide stateStart()");
+	//Started an offer
+	private LinkedList<Event> stateStart(Event event){
 		LinkedList<Event> resp = new LinkedList<Event>();
-
-		return resp;
-	}
-	
-	private LinkedList<Event> stateEnd(Event e){
-//		System.out.println("StackDivide stateEnd()");
-		LinkedList<Event> resp = new LinkedList<Event>();
-
-		return resp;
-	}
-	
-	// Trash currently, need to divide into states
-	public LinkedList<Event> mainAlgorithm(Event event) {
 		
-		
-		LinkedList<Event> resp = new LinkedList<Event>();
-		// Event might be something else, not an offer
-		Offer offer = event.getOffer();
+		// Get the last allocated offer, and continue from there
+		Offer offer = behavior.allocated;
 		
 		int agentFave = this.utils.getAgentFavoriteFreeResourceInOffer(offer);
 		int playerFave = this.utils.getPlayerFavoriteFreeResourceInOffer(offer);
@@ -136,12 +157,10 @@ public class StackDivide {
 				if (utils.getLedger() >= 0) {
 					
 					// Ask for the bigger part in exchange for a favor
-					utils.modifyVerbalLedger(-1);
 					resp.add(askFavor());
 				} else {
 					
 					// Give the bigger part in exchange for a favor
-					utils.modifyVerbalLedger(1);
 					resp.add(returnFavor());
 				}
 			}
@@ -158,21 +177,45 @@ public class StackDivide {
 			offerMat[utils.freeRow][agentFave] -= itemsToTransfer;
 			
 			Offer stackOffer = utils.matrixToOffer(offerMat);
+			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_OFFER, stackOffer, (int) (700*game.getMultiplier())));
+			stateStartSuggestedOffer = stackOffer;
 			
 		}
+		return resp;
+	}
+	
+	private LinkedList<Event> stateEnd(Event e){
+//		System.out.println("StackDivide stateEnd()");
+		LinkedList<Event> resp = new LinkedList<Event>();
+		
+		if (e.getSubClass() == Event.SubClass.OFFER_REJECT) {
+			
+			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
+					"Aww",(int) (1000 * game.getMultiplier())));
+
+			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "sad", 2000, (int) (100*game.getMultiplier())));	
+			
+		} else {
+			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS,
+					"Yay",(int) (1000 * game.getMultiplier())));
+
+			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "happy", 2000, (int) (100*game.getMultiplier())));	
+			behavior.allocated = stateStartSuggestedOffer;
+		}
+		done=true;
 		return resp;
 	}
 
 	
 	
-	public Event askFavor() {
+	private Event askFavor() {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.FAVOR_REQUEST,
 				"We seem to both want the same resource, but there is an odd amount of it."
 				+ " Would you mind giving me the larger part now and get the larger part next time?",
 				(int) (1000 * game.getMultiplier()));
 	}
 	
-	public Event returnFavor() {
+	private Event returnFavor() {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.FAVOR_ACCEPT,
 				"We seem to both want the same resource, but there is an odd amount of it."
 				+ " It's your turn to get the larger part, enjoy :)",

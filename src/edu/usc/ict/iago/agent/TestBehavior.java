@@ -14,7 +14,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		
 	private AgentUtilsExtension utils;
 	private GameSpec game;	
-	private Offer allocated;
+	public  Offer allocated;
 	private LedgerBehavior lb = LedgerBehavior.NONE;
 	private int adverseEvents = 0;
 	private Map<String , Integer> itemPoints;
