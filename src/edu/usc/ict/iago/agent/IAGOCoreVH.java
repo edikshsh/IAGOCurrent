@@ -147,6 +147,29 @@ public abstract class IAGOCoreVH extends GeneralVH
 		return currentGameCount;
 	}
 	
+	private void checkStackDivide(Event e) {
+		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game);
+		System.out.println(stackDivideAlgorithm.doesAcceptEvent(e));
+		Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS, "pos msg", (int) (100*game.getMultiplier()));
+		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
+		stackDivideAlgorithm.start(e0);
+		
+		Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG, "neg msg", (int) (100*game.getMultiplier()));
+		System.out.println("e1 is supported " + stackDivideAlgorithm.doesAcceptEvent(e1));
+		stackDivideAlgorithm.start(e1);
+		
+		Event e2 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, "happy", 200, (int) (100*game.getMultiplier()));
+
+		System.out.println("e2 is supported " + stackDivideAlgorithm.doesAcceptEvent(e2));
+		stackDivideAlgorithm.start(e2);
+		
+		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
+		stackDivideAlgorithm.start(e0);
+		
+		System.out.println("e2 is supported " + stackDivideAlgorithm.doesAcceptEvent(e2));
+		stackDivideAlgorithm.start(e2);
+	}
+	
 
 	/**
 	 * Agents work by responding to various events. This method describes how core agents go about selecting their responses.
@@ -157,6 +180,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	public LinkedList<Event> getEventResponse(Event e)
 	{
 		LinkedList<Event> resp = new LinkedList<Event>();
+		checkStackDivide(e);
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!
 			IMPORTANT: between GAME_END and GAME_START, the gameSpec stored in the superclass is undefined.
@@ -266,37 +290,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		//what to do when player sends an expression -- react to it with text and our own expression
 		if(e.getType().equals(Event.EventClass.SEND_EXPRESSION))
 		{
-			String expr = expression.getExpression(getHistory());
-			if (expr != null)
-			{
-				Event e1 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expr, 2000, (int) (700*game.getMultiplier()));
-				resp.add(e1);
-			}
-			Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
-			if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT))
-			{
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier())); 
-				if (e2.getOffer() != null) 
-				{
-					String s1 = messages.getProposalLang(getHistory(), game);
-					Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
-					resp.add(e0);
-					resp.add(e1);
-					resp.add(e2);
-					this.lastOfferSent = e2.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-				}
-			} 
-			else if (e0 != null) 
-			{ 
-				resp.add(e0);
-			}
-			disable = false;
-			return resp;
+			reactToExpression(resp,e);
 		}
 
 		// When to formally accept when player sends an incoming formal acceptance
@@ -760,6 +754,39 @@ public abstract class IAGOCoreVH extends GeneralVH
 		return isOfferGood;
 	}
 	
+	public LinkedList<Event> reactToExpression(LinkedList<Event> resp, Event e) {
+		String expr = expression.getExpression(getHistory());
+		if (expr != null)
+		{
+			Event e1 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expr, 2000, (int) (700*game.getMultiplier()));
+			resp.add(e1);
+		}
+		Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
+		if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT))
+		{
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier())); 
+			if (e2.getOffer() != null) 
+			{
+				String s1 = messages.getProposalLang(getHistory(), game);
+				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
+				resp.add(e0);
+				resp.add(e1);
+				resp.add(e2);
+				this.lastOfferSent = e2.getOffer();
+				if(favorOfferIncoming)
+				{
+					favorOffer = lastOfferSent;
+					favorOfferIncoming = false;
+				}
+			}
+		} 
+		else if (e0 != null) 
+		{ 
+			resp.add(e0);
+		}
+		disable = false;
+		return resp;
+	}
 
 	/**
 	 * Every agent needs a name to select the art that will be used. Currently only 4 names are supported: Brad, Ellie, Rens, and Laura.

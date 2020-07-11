@@ -37,4 +37,4 @@ dataMode_db=disabled
 
 #DebugLevel (debug, warn, error, silenced)
 
-debugLevel=WARN
+debugLevel=ERROR

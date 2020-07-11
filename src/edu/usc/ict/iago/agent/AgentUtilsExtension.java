@@ -16,7 +16,7 @@ import edu.usc.ict.iago.utils.Preference.Relation;
 class AgentUtilsExtension 
 {
 	private IAGOCoreVH agent;
-	private GameSpec game;
+	public GameSpec game;
 	private ArrayList<ArrayList<Integer>> orderings = new ArrayList<ArrayList<Integer>>();
 	private int[][] permutations;
 	private LinkedList<Preference> preferences = new LinkedList<Preference>();
