@@ -179,44 +179,53 @@ public class StackDivide extends BusinessLogic {
 		int[][] offerMat = utils.offerToMatrix(offer);
 		
 		
+		int itemsGivenToAgent = -1;
+		int itemsGivenToPlayer = -1;
+
 		
 		// Are the stacks the same
 		if (agentFave == playerFave) {
 			
 			//Is the number of items in the stack even?
 			if (offerMat[utils.freeRow][agentFave] % 2 == 0) {
-				int itemsToDivide = offerMat[utils.freeRow][agentFave];
-				offerMat[utils.adversaryRow][playerFave] += itemsToDivide /2;
-				offerMat[utils.myRow][agentFave] += itemsToDivide /2;
+				itemsGivenToAgent = itemsGivenToPlayer = offerMat[utils.freeRow][agentFave] / 2;
 			}
 			else {
 				// Does the player own the agent a favor, or no one owns anyone a favor
 				if (agentOwsAFavor) {
 					// Give the bigger part in exchange for a favor
 					resp.add(returnFavor());
+					itemsGivenToAgent = (int)(offerMat[utils.freeRow][agentFave] / 2);
+					itemsGivenToPlayer = offerMat[utils.freeRow][agentFave] - itemsGivenToAgent;
 
 				} else {
 					// Ask for the bigger part in exchange for a favor
 					resp.add(askFavor());
+					itemsGivenToAgent = (int)(offerMat[utils.freeRow][agentFave] / 2) + 1;
+					itemsGivenToPlayer = offerMat[utils.freeRow][agentFave] - itemsGivenToAgent;
 				}
+				
+				
+				agentOwsAFavor =! agentOwsAFavor;
 			}
 		}
 		// Stacks are different
 		// Distribute the min amount of free items in each stack
 		else {
-			int itemsToTransfer = Math.min(offerMat[utils.freeRow][playerFave], offerMat[utils.freeRow][playerFave]);
-			
-			offerMat[utils.adversaryRow][playerFave] += itemsToTransfer;
-			offerMat[utils.freeRow][playerFave] -= itemsToTransfer;
-			
-			offerMat[utils.myRow][agentFave] += itemsToTransfer;
-			offerMat[utils.freeRow][agentFave] -= itemsToTransfer;
-			
-			Offer stackOffer = utils.matrixToOffer(offerMat);
-			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_OFFER, stackOffer, (int) (700*game.getMultiplier())));
-			stateStartSuggestedOffer = stackOffer;
-			
+			itemsGivenToAgent = itemsGivenToPlayer = Math.min(offerMat[utils.freeRow][playerFave], offerMat[utils.freeRow][playerFave]);
 		}
+			
+		offerMat[utils.adversaryRow][playerFave] += itemsGivenToPlayer;
+		offerMat[utils.freeRow][playerFave] -= itemsGivenToPlayer;
+		
+		offerMat[utils.myRow][agentFave] += itemsGivenToAgent;
+		offerMat[utils.freeRow][agentFave] -= itemsGivenToAgent;
+		
+		Offer stackOffer = utils.matrixToOffer(offerMat);
+		resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_OFFER, stackOffer, (int) (700*game.getMultiplier())));
+		stateStartSuggestedOffer = stackOffer;
+			
+		
 		return resp;
 	}
 	
@@ -247,14 +256,14 @@ public class StackDivide extends BusinessLogic {
 	
 	
 	private Event askFavor() {
-		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.FAVOR_REQUEST,
+		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
 				"We seem to both want the same resource, but there is an odd amount of it."
 				+ " Would you mind giving me the larger part now and get the larger part next time?",
 				(int) (1000 * game.getMultiplier()));
 	}
 	
 	private Event returnFavor() {
-		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.FAVOR_ACCEPT,
+		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
 				"We seem to both want the same resource, but there is an odd amount of it."
 				+ " It's your turn to get the larger part, enjoy :)",
 				(int) (1000 * game.getMultiplier()));
