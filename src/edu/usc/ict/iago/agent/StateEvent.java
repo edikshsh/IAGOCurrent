@@ -35,29 +35,32 @@ public class StateEvent<State>{
 //		SEND_MESSAGE__PREF_WITHHOLD,
 //		SEND_MESSAGE__THREAT_POS,
 //		SEND_MESSAGE__TIMING,
-//		SEND_MESSAGE__ANY;
 //	}
 
 		
 	  public final State state; 
 	  public final Event.EventClass ec; 
 	  public final Event.SubClass esc; 
-	  public StateEvent(State state, Event.EventClass ec, Event.SubClass esc) { 
+	  public StateEvent(State state, Event.EventClass ec, Event.SubClass esc) {
+		if (state == null || ec == null || esc == null) {
+			throw new NullPointerException();
+		}
 	    this.state = state; 
 	    this.ec = ec; 
 	    this.esc = esc; 
 	  } 
 	  
 	  public String toString() {
-		  if (esc != null)
-			  return state + "__" + ec + "__" + esc;
-		  else
-			  return state + "__" + ec + "__" + "ANY";
+//		  if (esc != null)
+//			  return state + "__" + ec + "__" + esc;
+//		  else
+//			  return state + "__" + ec + "__" + "ANY";
+		  return state + "__" + ec + "__" + esc;
 	  }
 	  
 	  @Override
 	  public boolean equals(Object o) {
-		  if (o.getClass() ==StateEvent.class) 
+		  if (o.getClass() == StateEvent.class) 
 			  return this.toString().equals(((StateEvent)o).toString());
 		  return false;
 	  }
@@ -65,10 +68,12 @@ public class StateEvent<State>{
 
 	 @Override    
 	 public int hashCode() {   
-	 	 int total = 23 * state.hashCode() + 61 * ec.hashCode();
-		 if (esc != null) {
-			 total += 89 * esc.hashCode();
-		 }
+//	 	 int total = 23 * state.hashCode() + 61 * ec.hashCode();
+//		 if (esc != null) {
+//			 total += 89 * esc.hashCode();
+//		 }
+	 	 int total = 23 * state.hashCode() + 61 * ec.hashCode() + 89 * esc.hashCode();
+
 		 return total;
 	 }
 	     

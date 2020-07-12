@@ -25,12 +25,12 @@ public class TestPlayer extends IAGOCoreVH {
 	 * @param session: the session
 	 */
 	
-	static TestBehavior a;
+	static TestBehavior behavior;
 	static int round = 0;
 	public TestPlayer(String name, GameSpec game, Session session)
 	{
 
-		super("Test", game, session, a = new TestBehavior(TestBehavior.LedgerBehavior.FAIR), new TestExpression(), 
+		super("Test", game, session, behavior = new TestBehavior(TestBehavior.LedgerBehavior.FAIR), new TestExpression(), 
 				new TestMessage(false, false, TestBehavior.LedgerBehavior.FAIR));	
 
 
@@ -68,13 +68,15 @@ public class TestPlayer extends IAGOCoreVH {
 	public void onNewRoundStart() {
 		round++;
 		var simplePoints = game.getSimplePoints(this.getID());
-		a.setItemPoints(simplePoints);
+		behavior.setItemPoints(simplePoints);
 		
 		
 		new StaticData(game, this.getID());
 		StaticData.newRound();
 		
-	}
+		super.resetOnNewRound();
+		behavior.resetOnNewRound();
+		}
 	
 	
 

@@ -1,9 +1,11 @@
 package edu.usc.ict.iago.agent;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import javax.websocket.Session;
 
+import edu.usc.ict.iago.agent.BusinessLogic.BLState;
 import edu.usc.ict.iago.utils.Event;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.GeneralVH;
@@ -31,7 +33,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private boolean disable = false;	//adding a disabler check to help with agent vs. P++ functionality (note this will only be added to corevh and not the ++ version)
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
-	
+	StackDivide stackDivideAlgorithm;
+	private final State firstState = State.STACKDIVIDE;
+	State currState;
+	private HashMap<String, State> stateMachine;
+
 	private class Ledger
 	{
 		int ledgerValue = 0; //favors are added to the final ledger iff the offer was accepted, otherwise discarded.  Positive means agent has conducted a favor.
@@ -39,6 +45,16 @@ public abstract class IAGOCoreVH extends GeneralVH
 		int offerLedger = 0;  //favors are moved here and consumed from verbal when offer is made.  Positive means agent has made a favorable offer.
 	}
 	
+	// This enum will decide what algorithm we will use
+	// Default is the original implementation
+	enum State {
+		 STACKDIVIDE,
+		 RESOURCEDIVIDE,
+		 LYING,
+		 PLAYEROFFER,
+		 PLAYEROFFER2,
+	 	 DEFAULT
+	 }
 
 
 	/**
@@ -66,6 +82,20 @@ public abstract class IAGOCoreVH extends GeneralVH
 
 		this.messages.setUtils(utils);
 		this.behavior.setUtils(utils);
+		resetOnNewRound();
+		initStateMachine();
+	}
+	
+	public void resetOnNewRound() {
+		currState = firstState;
+		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
+
+	}
+	
+	private void initStateMachine() {
+		stateMachine = new HashMap<String, IAGOCoreVH.State>();
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
 	}
 	
 	/**
@@ -148,7 +178,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 	
 	private void checkStackDivide(Event e) {
-		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game);
+		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
 		System.out.println(stackDivideAlgorithm.doesAcceptEvent(e));
 		Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS, "pos msg", (int) (100*game.getMultiplier()));
 		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
@@ -170,17 +200,56 @@ public abstract class IAGOCoreVH extends GeneralVH
 		stackDivideAlgorithm.start(e2);
 	}
 	
-
 	/**
 	 * Agents work by responding to various events. This method describes how core agents go about selecting their responses.
+	 * Every event will first be passed to our new functions, and then to the original getEventResponse (stateDefault function) if need be
 	 * @param e the Event that the agent will respond to.
 	 * @return a list of Events in response to the initial Event.
 	 */
 	@Override
-	public LinkedList<Event> getEventResponse(Event e)
+	public LinkedList<Event> getEventResponse(Event e){
+		LinkedList<Event> resp = new LinkedList<Event>();
+		
+		switch (currState)
+		{
+			case STACKDIVIDE:
+				resp = stateStackDivide(e);
+				break;
+			case DEFAULT:
+				resp = stateDefault(e);
+				break;
+			default:
+				resp = stateDefault(e);
+				break;
+		}
+		return resp;
+	}
+
+
+	private LinkedList<Event> stateStackDivide(Event e){
+		LinkedList<Event> resp;
+		
+		if(stackDivideAlgorithm.blState == BLState.START) {
+			resp = stackDivideAlgorithm.start(e);
+			System.out.println("stackDivideAlgorithm started");
+			return resp;
+		}
+		else if (stackDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && stackDivideAlgorithm.doesAcceptEvent(e)) {
+			resp = stackDivideAlgorithm.start(e);
+			if (stackDivideAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
+				System.out.println("stackDivideAlgorithm done with state " + stackDivideAlgorithm.blState.toString());
+				currState = stateMachine.get(currState.toString() + "__" + stackDivideAlgorithm.blState.toString());
+			}
+			return resp;
+		}
+		
+		return stateDefault(e);
+	}
+
+	private LinkedList<Event> stateDefault(Event e)
 	{
 		LinkedList<Event> resp = new LinkedList<Event>();
-		checkStackDivide(e);
+//		checkStackDivide(e);
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!
 			IMPORTANT: between GAME_END and GAME_START, the gameSpec stored in the superclass is undefined.

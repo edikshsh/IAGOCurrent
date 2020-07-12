@@ -14,7 +14,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		
 	private AgentUtilsExtension utils;
 	private GameSpec game;	
-	private Offer allocated;
+	public  Offer allocated;
 	private LedgerBehavior lb = LedgerBehavior.NONE;
 	private int adverseEvents = 0;
 	private Map<String , Integer> itemPoints;
@@ -41,6 +41,13 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 	{
 		super();
 		this.lb = lb;
+	}
+	
+	public void resetOnNewRound() {
+		allocated = new Offer(game.getNumIssues());
+		for (int i=0; i<game.getNumIssues(); i++) {
+			allocated.setItem(i, new int[] {0,game.getIssueQuants()[i],0});
+		}
 	}
 		
 	@Override
