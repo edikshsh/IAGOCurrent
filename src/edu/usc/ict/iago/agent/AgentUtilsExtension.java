@@ -863,7 +863,31 @@ class AgentUtilsExtension
 		return matrixToOffer(offerMat);
 		
 	}
-	
+	public boolean isOfferGood(Offer lastOffer, Offer o) {
+
+		Offer allocated = lastOffer;//what we've already agreed on
+//		Offer conceded = behavior.getConceded();//what the agent has agreed on internally
+		
+//		int playerDiff = (utils.adversaryValue(o, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering()));
+		int newOfferValue = myActualOfferValue(o);
+		int oldOfferValue = myActualOfferValue(allocated);
+		int totalResourceValueThisRound = getMaxPossiblePoints();
+		int newOfferValueLost = pointsLostInOffer(o);
+		int oldOfferValueLost = pointsLostInOffer(allocated);
+
+		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
+		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
+		
+		System.out.println("Agent can receive a maximum of " + totalResourceValueThisRound + " points this round");
+		System.out.println("Last offer, agent received " + oldOfferValue + " points, and lost " + oldOfferValueLost + " points to adversary");
+		System.out.println("This offer, agent received " + newOfferValue + " points, and lost " + newOfferValueLost + " points to adversary");
+		System.out.println("Last offer gain ratio = " + oldGainRatio + ", new offer gain ratio = " + newGainRatio);
+
+		boolean isOfferGood = newGainRatio > oldGainRatio;
+		
+		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
+		return isOfferGood;
+	}
 	
 
 }

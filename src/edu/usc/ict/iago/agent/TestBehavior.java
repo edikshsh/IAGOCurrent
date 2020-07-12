@@ -128,24 +128,57 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 	
 	// Doesn't work
 	@Override
-	public Offer getCounterOffer(Offer o) {
+	public Offer getCounterOffer(Offer currOffer) {
 		
 		Offer counterOffer = new Offer(game.getNumIssues());
-		counterOffer.setOffer(o);
-		int[][] a = utils.offerToMatrix(o);
+		counterOffer.setOffer(currOffer);
+		int[][] offerMatrix = utils.offerToMatrix(currOffer);
 		
-		int playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
-		int agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
-
-		while(playerFavoriteResource != agentFavoriteResource) {
-			System.out.print("Counter offer = ");
-			System.out.println(counterOffer.toString());
-			System.out.println("Giving player resource " + playerFavoriteResource + " and giving agent resource " + agentFavoriteResource);
-			moveResource(counterOffer, playerFavoriteResource, this.utils.adversaryRow, this.utils.myRow);
-			moveResource(counterOffer, agentFavoriteResource, this.utils.myRow, this.utils.adversaryRow);
-			playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
-			agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
+		ArrayList<Integer> myOrder = utils.getMyOrdering();
+		ArrayList<Integer> theirOrder = utils.getMinimaxOrdering();
+		int currBestResource = 1;
+		int oppBestResource = 1;
+		int numOfIssuesTaken = 0;
+		while(!utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer)) {
+			int ourBestIndex = myOrder.get(currBestResource);
+			if(offerMatrix[utils.freeRow][ourBestIndex] > 0 || offerMatrix[utils.adversaryRow][ourBestIndex] > 0) {
+				if(offerMatrix[utils.freeRow][ourBestIndex] >0) {
+					moveResource(counterOffer, ourBestIndex, utils.freeRow, utils.myRow);
+				} else {
+					moveResource(counterOffer, ourBestIndex, utils.adversaryRow, utils.myRow);
+				}
+				numOfIssuesTaken++;
+			} else {
+				currBestResource++;
+			}
 		}
+		while(utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer) && numOfIssuesTaken > 0) {
+			int theirBestIndex = theirOrder.get(currBestResource);
+			if(offerMatrix[utils.freeRow][theirBestIndex] > 0 || offerMatrix[utils.myRow][theirBestIndex] > 0) {
+				if(offerMatrix[utils.freeRow][theirBestIndex] >0) {
+					moveResource(counterOffer, theirBestIndex, utils.freeRow, utils.adversaryRow);
+				} else {
+					moveResource(counterOffer, theirBestIndex, utils.myRow, utils.adversaryRow);
+				}
+				numOfIssuesTaken--;
+			} else {
+				currBestResource++;
+			}
+		}
+		
+		
+//		int playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
+//		int agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
+//
+//		while(playerFavoriteResource != agentFavoriteResource) {
+//			System.out.print("Counter offer = ");
+//			System.out.println(counterOffer.toString());
+//			System.out.println("Giving player resource " + playerFavoriteResource + " and giving agent resource " + agentFavoriteResource);
+//			moveResource(counterOffer, playerFavoriteResource, this.utils.adversaryRow, this.utils.myRow);
+//			moveResource(counterOffer, agentFavoriteResource, this.utils.myRow, this.utils.adversaryRow);
+//			playerFavoriteResource = utils.getPlayerFavoriteFreeResourceInOffer(counterOffer);
+//			agentFavoriteResource = utils.getAgentFavoriteFreeResourceInOffer(counterOffer);
+//		}
 		
 		debug("getCounterOffer() done"); 
 		return counterOffer;
