@@ -1,6 +1,7 @@
 package edu.usc.ict.iago.agent;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -29,6 +30,22 @@ class AgentUtilsExtension
 	public int freeRow = 1;
 	public int adversaryRow;
 	private boolean isFixedPie = false;
+	
+	int[][] itemValuesMat;
+	int realIndex=0;
+	int prefIndex=1;
+	int valueIndex=2;
+	
+	public void initItemValuesMat() {
+		itemValuesMat = new int[game.getNumIssues()][3];
+		
+		for (int i=0; i<game.getNumIssues(); i++) {
+			for (int j=0; j<itemValuesMat[0].length; j++) {
+				
+			}
+		}
+		
+	}
 
 	/**
 	 * Constructor for the AUE.
@@ -772,7 +789,7 @@ class AgentUtilsExtension
 	{
 		int[] freeResources = this.getResourcesFromOffer(o,this.freeRow);
 		int favoriteResource = -1;
-		var agentPref = this.getMyOrdering(); 
+		ArrayList<Integer> agentPref = this.getMyOrdering(); 
 		
 		int max = game.getNumIssues() + 1;
 		for(int i  = 0; i < game.getNumIssues(); i++) {
@@ -791,7 +808,7 @@ class AgentUtilsExtension
 	public int[][] offerToMatrix(Offer o){
 		int[][] mat = new int[3][game.getNumIssues()];
 		for(int i  = 0; i < game.getNumIssues(); i++) {
-			var item = o.getItem(i);
+			int[] item = o.getItem(i);
 			for (int j=0; j<3; j++) {
 				mat[j][i] = item[j];
 			}
@@ -812,28 +829,11 @@ class AgentUtilsExtension
 	// Exchanges 1 item of the best resource for the player and agent
 	// The agent gives the player 1 item of the best resource it has for the player, and the player does the same
 	public Offer exchangeBestResources(Offer o) {
-		var offerMat = offerToMatrix(o);
-		var agentResourcePreferences = getMinimaxOrdering(); 
-		var playerResourcePreferences = getMyOrdering();
+		int[][] offerMat = offerToMatrix(o);
+		ArrayList<Integer> agentResourcePreferences = getMinimaxOrdering(); 
+		ArrayList<Integer> playerResourcePreferences = getMyOrdering();
 		
-//		var agentResourcePreferencesIndices = new ArrayList<Integer>();
-//		var playerResourcePreferencesIndices = new ArrayList<Integer>();
-//		
-//		for (int i=1; i<=agentResourcePreferences.size(); i++) {
-//			for(int j=0; j< agentResourcePreferences.size(); j++) {
-//				if (agentResourcePreferences.get(j) == i) {
-//					agentResourcePreferencesIndices.add(j);
-//				}
-//			}
-//		}
-//		
-//		for (int i=1; i<=playerResourcePreferences.size(); i++) {
-//			for(int j=0; j< playerResourcePreferences.size(); j++) {
-//				if (playerResourcePreferences.get(j) == i) {
-//					playerResourcePreferencesIndices.add(j);
-//				}
-//			}
-//		}
+
 		
 		int[] resourceImportance = new int[game.getNumIssues()];
 		
@@ -874,7 +874,16 @@ class AgentUtilsExtension
 		int totalResourceValueThisRound = getMaxPossiblePoints();
 		int newOfferValueLost = pointsLostInOffer(o);
 		int oldOfferValueLost = pointsLostInOffer(allocated);
-
+		
+		ArrayList<Integer> myOrder = getMyOrdering();
+		
+//		var simplePoints = game.getSimplePoints(StaticData.playerId);
+//		ArrayList<Integer> agentResourceValues = new ArrayList<>();
+//		simplePoints.forEach((name,value) -> agentResourceValues.add(value));
+//		Collections.sort(agentResourceValues);
+//		Collections.reverse(agentResourceValues);
+//		int agentBestResourceStackValue = agentResourceValues.get(0) * game.getIssueQuants()[];
+		
 		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
 		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
 		
@@ -883,8 +892,13 @@ class AgentUtilsExtension
 		System.out.println("This offer, agent received " + newOfferValue + " points, and lost " + newOfferValueLost + " points to adversary");
 		System.out.println("Last offer gain ratio = " + oldGainRatio + ", new offer gain ratio = " + newGainRatio);
 
-		boolean isOfferGood = newGainRatio > oldGainRatio;
+		boolean isGainBetter = newGainRatio > oldGainRatio;
+		boolean isBetterThanBATNA = true;
+		if (isFullOffer(o)) {
+			isBetterThanBATNA = newOfferValue > myPresentedBATNA;
+		}
 		
+		boolean isOfferGood = isGainBetter && isBetterThanBATNA;
 		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
 		return isOfferGood;
 	}

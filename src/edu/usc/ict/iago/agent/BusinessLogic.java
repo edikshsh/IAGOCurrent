@@ -1,8 +1,9 @@
 package edu.usc.ict.iago.agent;
 
-public class BusinessLogic {
+public abstract class BusinessLogic<State>{
 	
 	public BLState blState;
+	public boolean continueFlow = false; // tells if the main flow should continue after getting an answer from the bl
 	public enum BLState {
 		 START,
 		 ONGOING,
@@ -11,7 +12,9 @@ public class BusinessLogic {
 	 	 TIMEOUT
 	 }
 	
-	public void resetBLState() {
+	
+	public void reset() {
 		blState = BLState.START;
 	}
+	
 }

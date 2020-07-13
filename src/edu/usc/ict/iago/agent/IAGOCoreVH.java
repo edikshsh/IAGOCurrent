@@ -33,8 +33,12 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private boolean disable = false;	//adding a disabler check to help with agent vs. P++ functionality (note this will only be added to corevh and not the ++ version)
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
-	StackDivide stackDivideAlgorithm;
-	private final State firstState = State.STACKDIVIDE;
+	
+	StackDivide<StackDivide.State> stackDivideAlgorithm;
+	RoundStart<RoundStart.State> roundStartAlgorithm;
+	
+	
+	private final State firstState = State.ROUNDSTART;
 	State currState;
 	private HashMap<String, State> stateMachine;
 
@@ -50,6 +54,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	enum State {
 		 STACKDIVIDE,
 		 RESOURCEDIVIDE,
+		 ROUNDSTART,
 		 LYING,
 		 PLAYEROFFER,
 		 PLAYEROFFER2,
@@ -89,13 +94,16 @@ public abstract class IAGOCoreVH extends GeneralVH
 	public void resetOnNewRound() {
 		currState = firstState;
 		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
+		roundStartAlgorithm = new RoundStart(this.utils, this, this.game, (TestBehavior)behavior);
 
 	}
 	
 	private void initStateMachine() {
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
+		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
+		
 	}
 	
 	/**
@@ -209,11 +217,26 @@ public abstract class IAGOCoreVH extends GeneralVH
 	@Override
 	public LinkedList<Event> getEventResponse(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
+		LinkedList<Event> firstActions = new LinkedList<Event>();
+
+		if (e.getType() == Event.EventClass.GAME_START) {
+			firstActions = gameStart(e);
+		}
+		
+		System.out.println("CORE currState = " + currState.toString());
 		
 		switch (currState)
 		{
+			case ROUNDSTART:
+				resp = stateRoundStart(e);
+				break;
 			case STACKDIVIDE:
 				resp = stateStackDivide(e);
+				// if the algorithm requested the main flow to continue handling the event
+				if (stackDivideAlgorithm.continueFlow) {
+					stackDivideAlgorithm.continueFlow = false;
+					resp.addAll(stateDefault(e));
+				}
 				break;
 			case DEFAULT:
 				resp = stateDefault(e);
@@ -222,7 +245,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 				resp = stateDefault(e);
 				break;
 		}
-		return resp;
+		firstActions.addAll(resp);
+		return firstActions;
 	}
 
 
@@ -242,14 +266,32 @@ public abstract class IAGOCoreVH extends GeneralVH
 			}
 			return resp;
 		}
+		System.out.println("stackDivideAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
+				" when on state " + stackDivideAlgorithm.currState.toString() + ", BLState  =" + stackDivideAlgorithm.blState);
 		
 		return stateDefault(e);
 	}
+	
+	private LinkedList<Event> stateRoundStart(Event e){
+		LinkedList<Event> resp;
+		resp = roundStartAlgorithm.start(e);
+		if (roundStartAlgorithm.blState != BLState.ONGOING) {
+			System.out.println("roundStartAlgorithm done with state " + roundStartAlgorithm.blState.toString());
+			currState = stateMachine.get(currState.toString() + "__" + roundStartAlgorithm.blState.toString());
+		}
+		
+		return resp;
+	}
 
-	private LinkedList<Event> stateDefault(Event e)
-	{
+	
+	public void onChangeAlgorithms() {
+		
+	}
+	
+	
+	// called when the first event which is of the class GAME_START is received
+	public LinkedList<Event> gameStart(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
-//		checkStackDivide(e);
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!
 			IMPORTANT: between GAME_END and GAME_START, the gameSpec stored in the superclass is undefined.
@@ -287,12 +329,15 @@ public abstract class IAGOCoreVH extends GeneralVH
 				String newGameMessage = "It's good to see you again!  Let's get ready to negotiate again.";
 				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE, newGameMessage, (int) (100*game.getMultiplier()));
 				resp.add(e0);
-				return resp;
 			}
 			firstGame = false;
 		}
-		
-		
+		return resp;
+	}
+
+	private LinkedList<Event> stateDefault(Event e)
+	{
+		LinkedList<Event> resp = new LinkedList<Event>();	
 		
 		 if(e.getType().equals(Event.EventClass.OFFER_IN_PROGRESS)) 
 		{	
@@ -499,23 +544,12 @@ public abstract class IAGOCoreVH extends GeneralVH
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
 			Offer playerOffer = e.getOffer();//incoming offer
-//			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
-//			Offer temp = utils.exchangeBestResources(o);
-//			System.out.println("Original offer: " + o.toString());
-//			System.out.println("New offer: " + temp.toString());
-//			Offer counterOffer = behavior.getCounterOffer(o);
-//			System.out.println("Original offer :");
-//			for (int i=0; i<o.getIssueCount(); i++) {
-//				System.out.print(o.getItem(i));
-//			}
-//			System.out.println("Counter offer :");
-//			for (int i=0; i<counterOffer.getIssueCount(); i++) {
-//				System.out.print(counterOffer.getItem(i));
-//			}
+
 			
 			boolean isOfferGood = utils.isOfferGood(behavior.getAllocated(),playerOffer);
 			
 			if(isOfferGood) {
+				behavior.updateAllocated(playerOffer);
 				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
 				if (eExpr != null) 
 				{
@@ -531,6 +565,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 				Event counterEvent = new Event(this.getID(), Event.EventClass.SEND_OFFER, newOffer, (int)(700 * game.getMultiplier()));
 				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, "I think this is a better offer", (int)(700 * game.getMultiplier()));
 				resp.add(counterEvent);
+				this.lastOfferSent = newOffer;
 				return resp;
 			}
 			

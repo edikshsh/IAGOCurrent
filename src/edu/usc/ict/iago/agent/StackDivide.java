@@ -9,15 +9,13 @@ import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
 
-public class StackDivide extends BusinessLogic {
+public class StackDivide<State> extends BusinessLogic<State> {
 	
 	private IAGOCoreVH agentCore;
 	private AgentUtilsExtension utils;
 	private GameSpec game;
 	private TestBehavior behavior;
 	public static boolean agentOwsAFavor = false;
-//	private HashMap<Tuple<State, String>, State> stateMachine;
-//	private HashMap<StateEvent, State> stateMachine;
 	private StateEventController<State> stateEventController; // Just here to let us use the StateEvent functions (can't be static because functions are generic)
 	public State currState = State.ASKFAVORITE;
 	private Offer stateStartSuggestedOffer = null;
@@ -28,51 +26,26 @@ public class StackDivide extends BusinessLogic {
 	 	 END
 	 }
 	
-	//Creates many states, fills null parameters with all possible values
-	private void massMachineStates(State start, State target, Event.EventClass ec, Event.SubClass esc) {
-		State[] startingStates = new State[] {start};
-		if (start == null) {
-			startingStates = State.values();
-		}
-		
-		Event.EventClass[] eventClasses = new Event.EventClass[] {ec};
-		if (ec == null) {
-			eventClasses = Event.EventClass.values();
-		}
-		
-		Event.SubClass[] eventSubClasses = new Event.SubClass[] {esc};
-		if (esc == null) {
-			eventSubClasses = Event.SubClass.values();
-		}
-		
-		for (State startingState: startingStates){
-			for (Event.EventClass eventClass: eventClasses){
-				for (Event.SubClass eventSubClass: eventSubClasses){
-					// Skip unnecessary entries
-					if (eventClass == Event.EventClass.SEND_MESSAGE || eventSubClass == Event.SubClass.NONE) {
-						stateEventController.addState(startingState, target, eventClass, eventSubClass);
-					}
-				}
-			}
-		}
-		
+	@Override
+	public void reset() {
+		super.reset();
+		stateStartSuggestedOffer = null;
+		currState = State.ASKFAVORITE;
 	}
+	
 
 	public StackDivide(AgentUtilsExtension utils, IAGOCoreVH agentCore, GameSpec game, TestBehavior behavior) {
 		this.utils = utils;
 		this.agentCore = agentCore;
 		this.game = game;
 		this.behavior = behavior;
-		resetBLState();
+		reset();
 		this.stateEventController = new StateEventController<StackDivide.State>();
-		massMachineStates(State.ASKFAVORITE, State.MAKEDEAL, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO);
-//		massMachineStates(State.MAKEDEAL, State.END, null, null);
-		massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT);
-		massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT);
+		stateEventController.massMachineStates(State.ASKFAVORITE, State.MAKEDEAL, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_OFFER, null, State.class);
 
-//		stateEventController.addState(State.START, State.START, Event.EventClass.SEND_EXPRESSION, Event.SubClass.NONE);
-//		stateEventController.addState(State.START, State.END, Event.EventClass.SEND_MESSAGE, null);
-//		stateEventController.addState(State.END, State.START, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS);
 	}
 	
 	/**
@@ -83,22 +56,13 @@ public class StackDivide extends BusinessLogic {
 	 */
 	public boolean doesAcceptEvent(Event e) {
 		boolean acceptEvent = stateEventController.doesAcceptEvent(e, currState); 
-		// State controller does not suppprt preference type so need to make a special check
+		// State controller does not support preference type so need to make a special check
 		if (e.getPreference() != null) {
 			System.out.println("StackDivide doesAcceptEvent() event contains preference, acceptEvent = " + acceptEvent + ", isQuery = " + e.getPreference().isQuery());
 			acceptEvent &= !e.getPreference().isQuery();
 		}
 		return acceptEvent;
 	}
-	
-//	/**
-//	 * Converts an event to StateEvents to be used as keys in the stateMachine. 
-//	 * @param e: The Event used.
-//	 * @return stateMachine keys to be searched
-//	 */
-//	private StateEvent<State>[] convertEventToTypes(Event e){
-//		return stateEventController.convertEventToTypes(e, currState);
-//	}
 	
 	/**
 	 * Starting point of the algorithm
@@ -114,7 +78,6 @@ public class StackDivide extends BusinessLogic {
 			System.out.println("StackDivide first");
 			blState = BLState.ONGOING;
 			LinkedList<Event> returnedEvents = funcByState(e);
-//			if (newState != null) currState = newState;
 			return returnedEvents;
 		}
 		
@@ -233,6 +196,7 @@ public class StackDivide extends BusinessLogic {
 //		System.out.println("StackDivide stateEnd()");
 		LinkedList<Event> resp = new LinkedList<Event>();
 		
+		// Stack divide offer was rejected by the player
 		if (e.getSubClass() == Event.SubClass.OFFER_REJECT) {
 			
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
@@ -241,7 +205,8 @@ public class StackDivide extends BusinessLogic {
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "sad", 2000, (int) (100*game.getMultiplier())));	
 			this.blState = BLState.FAILURE;
 			
-		} else {
+		// Stack divide offer was accepted by the player
+		} else if (e.getSubClass() == Event.SubClass.OFFER_ACCEPT){
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS,
 					"Yay",(int) (1000 * game.getMultiplier())));
 
@@ -249,11 +214,25 @@ public class StackDivide extends BusinessLogic {
 			behavior.allocated = stateStartSuggestedOffer;
 			this.blState = BLState.SUCCESS;
 
+		// Stack divide offer was interrupted by the player by making a new offer
+		} else {
+			Event rudeTxt = new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
+					"How rude!",
+					(int) (1000 * game.getMultiplier()));
+//			Event rudeExpression = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "surprised", 2000, (int) (100*game.getMultiplier()));
+			Event rudeExpression2 = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "angry", 2000, (int) (100*game.getMultiplier()));
+
+//			resp.add(rudeExpression);
+			resp.add(rudeExpression2);
+
+			resp.add(rudeTxt);
+			continueFlow=true; // Tell the main flow that we want for it to continue handling the event (probably with default bl)
+			this.blState = BLState.FAILURE;
+
 		}
 		return resp;
 	}
 
-	
 	
 	private Event askFavor() {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
