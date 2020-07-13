@@ -1,6 +1,7 @@
 package edu.usc.ict.iago.agent;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -29,6 +30,22 @@ class AgentUtilsExtension
 	public int freeRow = 1;
 	public int adversaryRow;
 	private boolean isFixedPie = false;
+	
+	int[][] itemValuesMat;
+	int realIndex=0;
+	int prefIndex=1;
+	int valueIndex=2;
+	
+	public void initItemValuesMat() {
+		itemValuesMat = new int[game.getNumIssues()][3];
+		
+		for (int i=0; i<game.getNumIssues(); i++) {
+			for (int j=0; j<itemValuesMat[0].length; j++) {
+				
+			}
+		}
+		
+	}
 
 	/**
 	 * Constructor for the AUE.
@@ -857,7 +874,16 @@ class AgentUtilsExtension
 		int totalResourceValueThisRound = getMaxPossiblePoints();
 		int newOfferValueLost = pointsLostInOffer(o);
 		int oldOfferValueLost = pointsLostInOffer(allocated);
-
+		
+		ArrayList<Integer> myOrder = getMyOrdering();
+		
+//		var simplePoints = game.getSimplePoints(StaticData.playerId);
+//		ArrayList<Integer> agentResourceValues = new ArrayList<>();
+//		simplePoints.forEach((name,value) -> agentResourceValues.add(value));
+//		Collections.sort(agentResourceValues);
+//		Collections.reverse(agentResourceValues);
+//		int agentBestResourceStackValue = agentResourceValues.get(0) * game.getIssueQuants()[];
+		
 		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
 		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
 		
