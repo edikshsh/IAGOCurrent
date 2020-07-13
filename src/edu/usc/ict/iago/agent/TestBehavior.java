@@ -140,7 +140,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		int oppBestResource = 1;
 		int numOfIssuesTaken = 0;
 		while(!utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer)) {
-			int ourBestIndex = myOrder.get(currBestResource);
+			int ourBestIndex = myOrder.get(currBestResource) - 1;
 			if(offerMatrix[utils.freeRow][ourBestIndex] > 0 || offerMatrix[utils.adversaryRow][ourBestIndex] > 0) {
 				if(offerMatrix[utils.freeRow][ourBestIndex] >0) {
 					moveResource(counterOffer, ourBestIndex, utils.freeRow, utils.myRow);
@@ -153,7 +153,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 			}
 		}
 		while(utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer) && numOfIssuesTaken > 0) {
-			int theirBestIndex = theirOrder.get(currBestResource);
+			int theirBestIndex = theirOrder.get(currBestResource) - 1;
 			if(offerMatrix[utils.freeRow][theirBestIndex] > 0 || offerMatrix[utils.myRow][theirBestIndex] > 0) {
 				if(offerMatrix[utils.freeRow][theirBestIndex] >0) {
 					moveResource(counterOffer, theirBestIndex, utils.freeRow, utils.adversaryRow);

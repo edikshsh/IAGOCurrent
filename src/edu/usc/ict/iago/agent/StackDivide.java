@@ -16,8 +16,6 @@ public class StackDivide<State> extends BusinessLogic<State> {
 	private GameSpec game;
 	private TestBehavior behavior;
 	public static boolean agentOwsAFavor = false;
-//	private HashMap<Tuple<State, String>, State> stateMachine;
-//	private HashMap<StateEvent, State> stateMachine;
 	private StateEventController<State> stateEventController; // Just here to let us use the StateEvent functions (can't be static because functions are generic)
 	public State currState = State.ASKFAVORITE;
 	private Offer stateStartSuggestedOffer = null;
@@ -46,6 +44,7 @@ public class StackDivide<State> extends BusinessLogic<State> {
 		stateEventController.massMachineStates(State.ASKFAVORITE, State.MAKEDEAL, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO, State.class);
 		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, State.class);
 		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_OFFER, null, State.class);
 
 	}
 	
@@ -197,6 +196,7 @@ public class StackDivide<State> extends BusinessLogic<State> {
 //		System.out.println("StackDivide stateEnd()");
 		LinkedList<Event> resp = new LinkedList<Event>();
 		
+		// Stack divide offer was rejected by the player
 		if (e.getSubClass() == Event.SubClass.OFFER_REJECT) {
 			
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
@@ -205,7 +205,8 @@ public class StackDivide<State> extends BusinessLogic<State> {
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "sad", 2000, (int) (100*game.getMultiplier())));	
 			this.blState = BLState.FAILURE;
 			
-		} else {
+		// Stack divide offer was accepted by the player
+		} else if (e.getSubClass() == Event.SubClass.OFFER_ACCEPT){
 			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS,
 					"Yay",(int) (1000 * game.getMultiplier())));
 
@@ -213,11 +214,25 @@ public class StackDivide<State> extends BusinessLogic<State> {
 			behavior.allocated = stateStartSuggestedOffer;
 			this.blState = BLState.SUCCESS;
 
+		// Stack divide offer was interrupted by the player by making a new offer
+		} else {
+			Event rudeTxt = new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
+					"How rude!",
+					(int) (1000 * game.getMultiplier()));
+//			Event rudeExpression = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "surprised", 2000, (int) (100*game.getMultiplier()));
+			Event rudeExpression2 = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "angry", 2000, (int) (100*game.getMultiplier()));
+
+//			resp.add(rudeExpression);
+			resp.add(rudeExpression2);
+
+			resp.add(rudeTxt);
+			continueFlow=true; // Tell the main flow that we want for it to continue handling the event (probably with default bl)
+			this.blState = BLState.FAILURE;
+
 		}
 		return resp;
 	}
 
-	
 	
 	private Event askFavor() {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,

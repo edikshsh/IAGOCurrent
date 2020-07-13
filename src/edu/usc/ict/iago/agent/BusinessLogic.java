@@ -1,10 +1,9 @@
 package edu.usc.ict.iago.agent;
 
-import edu.usc.ict.iago.utils.Event;
-
 public abstract class BusinessLogic<State>{
 	
 	public BLState blState;
+	public boolean continueFlow = false; // tells if the main flow should continue after getting an answer from the bl
 	public enum BLState {
 		 START,
 		 ONGOING,

@@ -232,6 +232,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 				break;
 			case STACKDIVIDE:
 				resp = stateStackDivide(e);
+				// if the algorithm requested the main flow to continue handling the event
+				if (stackDivideAlgorithm.continueFlow) {
+					stackDivideAlgorithm.continueFlow = false;
+					resp.addAll(stateDefault(e));
+				}
 				break;
 			case DEFAULT:
 				resp = stateDefault(e);
@@ -539,23 +544,12 @@ public abstract class IAGOCoreVH extends GeneralVH
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
 			Offer playerOffer = e.getOffer();//incoming offer
-//			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
-//			Offer temp = utils.exchangeBestResources(o);
-//			System.out.println("Original offer: " + o.toString());
-//			System.out.println("New offer: " + temp.toString());
-//			Offer counterOffer = behavior.getCounterOffer(o);
-//			System.out.println("Original offer :");
-//			for (int i=0; i<o.getIssueCount(); i++) {
-//				System.out.print(o.getItem(i));
-//			}
-//			System.out.println("Counter offer :");
-//			for (int i=0; i<counterOffer.getIssueCount(); i++) {
-//				System.out.print(counterOffer.getItem(i));
-//			}
+
 			
 			boolean isOfferGood = utils.isOfferGood(behavior.getAllocated(),playerOffer);
 			
 			if(isOfferGood) {
+				behavior.updateAllocated(playerOffer);
 				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
 				if (eExpr != null) 
 				{
@@ -571,6 +565,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 				Event counterEvent = new Event(this.getID(), Event.EventClass.SEND_OFFER, newOffer, (int)(700 * game.getMultiplier()));
 				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, "I think this is a better offer", (int)(700 * game.getMultiplier()));
 				resp.add(counterEvent);
+				this.lastOfferSent = newOffer;
 				return resp;
 			}
 			
