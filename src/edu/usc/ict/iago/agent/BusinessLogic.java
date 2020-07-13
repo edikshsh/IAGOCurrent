@@ -1,6 +1,8 @@
 package edu.usc.ict.iago.agent;
 
-public class BusinessLogic {
+import edu.usc.ict.iago.utils.Event;
+
+public abstract class BusinessLogic<State>{
 	
 	public BLState blState;
 	public enum BLState {
@@ -11,7 +13,9 @@ public class BusinessLogic {
 	 	 TIMEOUT
 	 }
 	
-	public void resetBLState() {
+	
+	public void reset() {
 		blState = BLState.START;
 	}
+	
 }

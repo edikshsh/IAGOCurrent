@@ -33,8 +33,12 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private boolean disable = false;	//adding a disabler check to help with agent vs. P++ functionality (note this will only be added to corevh and not the ++ version)
 	private int currentGameCount = 0;
 	private Ledger myLedger = new Ledger();
-	StackDivide stackDivideAlgorithm;
-	private final State firstState = State.STACKDIVIDE;
+	
+	StackDivide<StackDivide.State> stackDivideAlgorithm;
+	RoundStart<RoundStart.State> roundStartAlgorithm;
+	
+	
+	private final State firstState = State.ROUNDSTART;
 	State currState;
 	private HashMap<String, State> stateMachine;
 
@@ -50,6 +54,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	enum State {
 		 STACKDIVIDE,
 		 RESOURCEDIVIDE,
+		 ROUNDSTART,
 		 LYING,
 		 PLAYEROFFER,
 		 PLAYEROFFER2,
@@ -89,13 +94,16 @@ public abstract class IAGOCoreVH extends GeneralVH
 	public void resetOnNewRound() {
 		currState = firstState;
 		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
+		roundStartAlgorithm = new RoundStart(this.utils, this, this.game, (TestBehavior)behavior);
 
 	}
 	
 	private void initStateMachine() {
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
+		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
+		
 	}
 	
 	/**
@@ -215,8 +223,13 @@ public abstract class IAGOCoreVH extends GeneralVH
 			firstActions = gameStart(e);
 		}
 		
+		System.out.println("CORE currState = " + currState.toString());
+		
 		switch (currState)
 		{
+			case ROUNDSTART:
+				resp = stateRoundStart(e);
+				break;
 			case STACKDIVIDE:
 				resp = stateStackDivide(e);
 				break;
@@ -248,13 +261,31 @@ public abstract class IAGOCoreVH extends GeneralVH
 			}
 			return resp;
 		}
+		System.out.println("stackDivideAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
+				" when on state " + stackDivideAlgorithm.currState.toString() + ", BLState  =" + stackDivideAlgorithm.blState);
 		
 		return stateDefault(e);
 	}
 	
+	private LinkedList<Event> stateRoundStart(Event e){
+		LinkedList<Event> resp;
+		resp = roundStartAlgorithm.start(e);
+		if (roundStartAlgorithm.blState != BLState.ONGOING) {
+			System.out.println("roundStartAlgorithm done with state " + roundStartAlgorithm.blState.toString());
+			currState = stateMachine.get(currState.toString() + "__" + roundStartAlgorithm.blState.toString());
+		}
+		
+		return resp;
+	}
+
+	
+	public void onChangeAlgorithms() {
+		
+	}
+	
 	
 	// called when the first event which is of the class GAME_START is received
-	private LinkedList<Event> gameStart(Event e){
+	public LinkedList<Event> gameStart(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!

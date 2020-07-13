@@ -2,7 +2,7 @@ package edu.usc.ict.iago.agent;
 import edu.usc.ict.iago.agent.StackDivide.State;
 import edu.usc.ict.iago.utils.Event;
 
-public class StateEvent<State>{ 
+public class StateEvent<State extends Enum<State>>{ 
 	
 	
 	// not used but shows what EventClass and SubClass combinations are available
