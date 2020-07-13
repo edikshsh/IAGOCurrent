@@ -12,7 +12,7 @@ import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
 import edu.usc.ict.iago.utils.ServletUtils;
 
-public class RoundStart<State> extends BusinessLogic<State> {
+public class RoundStart<State> extends BusinessLogic {
 	
 	private IAGOCoreVH agentCore;
 	private AgentUtilsExtension utils;

@@ -15,7 +15,7 @@ import edu.usc.ict.iago.utils.Preference;
 import edu.usc.ict.iago.utils.ServletUtils;
 import edu.usc.ict.iago.utils.Event.EventClass;
 
-public abstract class IAGOCoreVH extends GeneralVH
+public abstract class IAGOCoreVHOld2 extends GeneralVH
 {
 	private Offer lastOfferReceived;
 	private Offer lastOfferSent;
@@ -72,7 +72,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	 * @param expression Every core agent needs an expression extending CoreExpression.
 	 * @param messages Every core agent needs a message extending CoreMessage.
 	 */
-	public IAGOCoreVH(String name, GameSpec game, Session session, IAGOCoreBehavior behavior,
+	public IAGOCoreVHOld2(String name, GameSpec game, Session session, IAGOCoreBehavior behavior,
 			IAGOCoreExpression expression, IAGOCoreMessage messages)
 	{
 		super(name, game, session);
@@ -99,7 +99,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 	
 	private void initStateMachine() {
-		stateMachine = new HashMap<String, IAGOCoreVH.State>();
+		stateMachine = new HashMap<String, IAGOCoreVHOld2.State>();
 		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
@@ -284,7 +284,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 
 	
-	public void onChangeAlgorithms(BusinessLogic bl) {
+	public void onChangeAlgorithms() {
 		
 	}
 	

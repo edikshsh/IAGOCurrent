@@ -1,6 +1,6 @@
 package edu.usc.ict.iago.agent;
 
-public abstract class BusinessLogic<State>{
+public abstract class BusinessLogic{
 	
 	public BLState blState;
 	public boolean continueFlow = false; // tells if the main flow should continue after getting an answer from the bl
