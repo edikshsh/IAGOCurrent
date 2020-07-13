@@ -209,6 +209,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 	@Override
 	public LinkedList<Event> getEventResponse(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
+		LinkedList<Event> firstActions = new LinkedList<Event>();
+
+		if (e.getType() == Event.EventClass.GAME_START) {
+			firstActions = gameStart(e);
+		}
 		
 		switch (currState)
 		{
@@ -222,7 +227,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 				resp = stateDefault(e);
 				break;
 		}
-		return resp;
+		firstActions.addAll(resp);
+		return firstActions;
 	}
 
 
@@ -245,11 +251,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 		
 		return stateDefault(e);
 	}
-
-	private LinkedList<Event> stateDefault(Event e)
-	{
+	
+	
+	// called when the first event which is of the class GAME_START is received
+	private LinkedList<Event> gameStart(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
-//		checkStackDivide(e);
 		/**what to do when the game has changed -- this is only necessary because our AUE needs to be updated.
 			Game, the current GameSpec from our superclass has been automatically changed!
 			IMPORTANT: between GAME_END and GAME_START, the gameSpec stored in the superclass is undefined.
@@ -287,12 +293,15 @@ public abstract class IAGOCoreVH extends GeneralVH
 				String newGameMessage = "It's good to see you again!  Let's get ready to negotiate again.";
 				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE, newGameMessage, (int) (100*game.getMultiplier()));
 				resp.add(e0);
-				return resp;
 			}
 			firstGame = false;
 		}
-		
-		
+		return resp;
+	}
+
+	private LinkedList<Event> stateDefault(Event e)
+	{
+		LinkedList<Event> resp = new LinkedList<Event>();	
 		
 		 if(e.getType().equals(Event.EventClass.OFFER_IN_PROGRESS)) 
 		{	
@@ -498,7 +507,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		//what to do when the player sends an offer
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
-			Offer o = e.getOffer();//incoming offer
+			Offer playerOffer = e.getOffer();//incoming offer
 //			System.out.println("Offer is " + (isOfferGood(o) ? "good" : "not good"));
 //			Offer temp = utils.exchangeBestResources(o);
 //			System.out.println("Original offer: " + o.toString());
@@ -513,113 +522,134 @@ public abstract class IAGOCoreVH extends GeneralVH
 //				System.out.print(counterOffer.getItem(i));
 //			}
 			
-			ServletUtils.log("Agent Normalized ordering: " + utils.getMyOrdering(), ServletUtils.DebugLevels.DEBUG);
-			ServletUtils.log("Optimal ordering: " + utils.getMinimaxOrdering(), ServletUtils.DebugLevels.DEBUG);
-
-			this.lastOfferReceived = o; 
-
-			boolean localFair = false;
-			boolean totalFair = false;
-
-			Offer allocated = behavior.getAllocated();//what we've already agreed on
-			Offer conceded = behavior.getConceded();//what the agent has agreed on internally
-			ServletUtils.log("Allocated Agent Value: " + utils.myActualOfferValue(allocated), ServletUtils.DebugLevels.DEBUG);
-			ServletUtils.log("Conceded Agent Value: " + utils.myActualOfferValue(conceded), ServletUtils.DebugLevels.DEBUG);
-			ServletUtils.log("Offered Agent Value: " + utils.myActualOfferValue(o), ServletUtils.DebugLevels.DEBUG);
-			int playerDiff = (utils.adversaryValue(o, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering()));
-			ServletUtils.log("Player Difference: " + playerDiff, ServletUtils.DebugLevels.DEBUG);
-
-			if(utils.myActualOfferValue(o) > utils.myActualOfferValue(allocated))
-			{//net positive (o is a better offer than allocated)
-				int myValue = utils.myActualOfferValue(o) - utils.myActualOfferValue(allocated) + behavior.getAcceptMargin();
-				ServletUtils.log("My target: " + myValue, ServletUtils.DebugLevels.DEBUG);
-				int opponentValue = utils.adversaryValue(o, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering());
-				if(myValue > opponentValue)
-					localFair = true;//offer improvement is within one max value item of the same for me and my opponent
-			}
-
-			if (behavior instanceof IAGOCompetitiveBehavior) 
-			{
-				totalFair = ((IAGOCompetitiveBehavior) behavior).acceptOffer(o);
-			}
-			else if(utils.myActualOfferValue(o) + behavior.getAcceptMargin() > utils.adversaryValue(o, utils.getMinimaxOrdering()))
-				totalFair = true;//total offer still fair
+			boolean isOfferGood = utils.isOfferGood(behavior.getAllocated(),playerOffer);
 			
-			//totalFair too hard, so always set to true here
-			totalFair = true;
-
-			if (localFair && !totalFair)
-			{
-				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getSemiFairEmotion(), 2000, (int) (700*game.getMultiplier()));
-				if (eExpr != null)
-				{
-					resp.add(eExpr);
-				}
-				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getSemiFairResponse(), (int) (700*game.getMultiplier()));
-				resp.add(e0);
-				behavior.updateAdverseEvents(1);
-				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()),  (int) (700*game.getMultiplier()));
-				if(e3.getOffer() != null)
-				{
-					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-					resp.add(e1);
-					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
-					resp.add(e2);
-					this.lastOfferSent = e3.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-					resp.add(e3);
-				}
-			}
-			else if(localFair && totalFair)
-			{
+			if(isOfferGood) {
 				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
 				if (eExpr != null) 
 				{
 					resp.add(eExpr);
 				}
-				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier()));
-
+				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier())); 
 				resp.add(e0);
-				ServletUtils.log("ACCEPTED OFFER!", ServletUtils.DebugLevels.DEBUG);
-				behavior.updateAllocated(this.lastOfferReceived);
+				
+				return resp;
+				
+			} else {
+				Offer newOffer = behavior.getCounterOffer(playerOffer);
+				Event counterEvent = new Event(this.getID(), Event.EventClass.SEND_OFFER, newOffer, (int)(700 * game.getMultiplier()));
+				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, "I think this is a better offer", (int)(700 * game.getMultiplier()));
+				resp.add(counterEvent);
+				return resp;
+			}
+			
+//			ServletUtils.log("Agent Normalized ordering: " + utils.getMyOrdering(), ServletUtils.DebugLevels.DEBUG);
+//			ServletUtils.log("Optimal ordering: " + utils.getMinimaxOrdering(), ServletUtils.DebugLevels.DEBUG);
 
-				Event eFinalize = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-				if(utils.isFullOffer(o))
-					resp.add(eFinalize);
-			}
-			else
-			{
-				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getUnfairEmotion(), 2000, (int) (700*game.getMultiplier()));
-				if (eExpr != null) 
-				{
-					resp.add(eExpr);
-				}
-				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getVHRejectLang(getHistory(), game), (int) (700*game.getMultiplier()));
-				resp.add(e0);	
-				behavior.updateAdverseEvents(1);
-				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier()));
-				if(e3.getOffer() != null)
-				{
-					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-					resp.add(e1);
-					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
-					resp.add(e2);
-					this.lastOfferSent = e3.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-					resp.add(e3);
-				}
-			}
+//			this.lastOfferReceived = playerOffer; 
+
+///			boolean localFair = false;
+//			boolean totalFair = false;
+
+//			Offer allocated = behavior.getAllocated();//what we've already agreed on
+//			Offer conceded = behavior.getConceded();//what the agent has agreed on internally
+////			ServletUtils.log("Allocated Agent Value: " + utils.myActualOfferValue(allocated), ServletUtils.DebugLevels.DEBUG);
+////			ServletUtils.log("Conceded Agent Value: " + utils.myActualOfferValue(conceded), ServletUtils.DebugLevels.DEBUG);
+////			ServletUtils.log("Offered Agent Value: " + utils.myActualOfferValue(playerOffer), ServletUtils.DebugLevels.DEBUG);
+//			int playerDiff = (utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering()));
+//			ServletUtils.log("Player Difference: " + playerDiff, ServletUtils.DebugLevels.DEBUG);
+
+//			if(utils.myActualOfferValue(playerOffer) > utils.myActualOfferValue(allocated))
+//			{//net positive (o is a better offer than allocated)
+//				int myValue = utils.myActualOfferValue(playerOffer) - utils.myActualOfferValue(allocated) + behavior.getAcceptMargin();
+////				ServletUtils.log("My target: " + myValue, ServletUtils.DebugLevels.DEBUG);
+//				int opponentValue = utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering());
+//				if(myValue > opponentValue)
+//					localFair = true;//offer improvement is within one max value item of the same for me and my opponent
+//			}
+
+//			if (behavior instanceof IAGOCompetitiveBehavior) 
+//			{
+//				totalFair = ((IAGOCompetitiveBehavior) behavior).acceptOffer(playerOffer);
+//			}
+//			else if(utils.myActualOfferValue(playerOffer) + behavior.getAcceptMargin() > utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()))
+//				totalFair = true;//total offer still fair
+			
+//			//totalFair too hard, so always set to true here
+//			totalFair = true;
+//
+//			if (localFair && !totalFair)
+//			{
+//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getSemiFairEmotion(), 2000, (int) (700*game.getMultiplier()));
+//				if (eExpr != null)
+//				{
+//					resp.add(eExpr);
+//				}
+//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getSemiFairResponse(), (int) (700*game.getMultiplier()));
+//				resp.add(e0);
+//				behavior.updateAdverseEvents(1);
+//				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()),  (int) (700*game.getMultiplier()));
+//				if(e3.getOffer() != null)
+//				{
+//					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+//					resp.add(e1);
+//					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
+//					resp.add(e2);
+//					this.lastOfferSent = e3.getOffer();
+//					if(favorOfferIncoming)
+//					{
+//						favorOffer = lastOfferSent;
+//						favorOfferIncoming = false;
+//					}
+//					resp.add(e3);
+//				}
+//			}
+//			else if(localFair && totalFair)
+//			{
+//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
+//				if (eExpr != null) 
+//				{
+//					resp.add(eExpr);
+//				}
+//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier()));
+//
+//				resp.add(e0);
+//				ServletUtils.log("ACCEPTED OFFER!", ServletUtils.DebugLevels.DEBUG);
+//				behavior.updateAllocated(this.lastOfferReceived);
+//
+//				Event eFinalize = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
+//				if(utils.isFullOffer(playerOffer))
+//					resp.add(eFinalize);
+//			}
+//			else
+//			{
+//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getUnfairEmotion(), 2000, (int) (700*game.getMultiplier()));
+//				if (eExpr != null) 
+//				{
+//					resp.add(eExpr);
+//				}
+//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getVHRejectLang(getHistory(), game), (int) (700*game.getMultiplier()));
+//				resp.add(e0);	
+//				behavior.updateAdverseEvents(1);
+//				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier()));
+//				if(e3.getOffer() != null)
+//				{
+//					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+//					resp.add(e1);
+//					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
+//					resp.add(e2);
+//					this.lastOfferSent = e3.getOffer();
+//					if(favorOfferIncoming)
+//					{
+//						favorOffer = lastOfferSent;
+//						favorOfferIncoming = false;
+//					}
+//					resp.add(e3);
+//				}
+//			}
 			
 			
-			return resp;
+//			return resp;
 		}
 
 		//what to do when the player sends a message (including offer acceptances and rejections)
@@ -797,31 +827,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	}
 
 	
-	public boolean isOfferGood(Offer o) {
-
-		Offer allocated = behavior.getAllocated();//what we've already agreed on
-//		Offer conceded = behavior.getConceded();//what the agent has agreed on internally
-		
-//		int playerDiff = (utils.adversaryValue(o, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering()));
-		int newOfferValue = utils.myActualOfferValue(o);
-		int oldOfferValue = utils.myActualOfferValue(allocated);
-		int totalResourceValueThisRound = utils.getMaxPossiblePoints();
-		int newOfferValueLost = utils.pointsLostInOffer(o);
-		int oldOfferValueLost = utils.pointsLostInOffer(allocated);
-
-		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
-		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
-		
-		System.out.println("Agent can receive a maximum of " + totalResourceValueThisRound + " points this round");
-		System.out.println("Last offer, agent received " + oldOfferValue + " points, and lost " + oldOfferValueLost + " points to adversary");
-		System.out.println("This offer, agent received " + newOfferValue + " points, and lost " + newOfferValueLost + " points to adversary");
-		System.out.println("Last offer gain ratio = " + oldGainRatio + ", new offer gain ratio = " + newGainRatio);
-
-		boolean isOfferGood = newGainRatio > oldGainRatio;
-		
-		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
-		return isOfferGood;
-	}
+	
 	
 	public LinkedList<Event> reactToExpression(LinkedList<Event> resp, Event e) {
 		String expr = expression.getExpression(getHistory());

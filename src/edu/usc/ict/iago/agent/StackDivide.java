@@ -28,6 +28,11 @@ public class StackDivide extends BusinessLogic {
 	 	 END
 	 }
 	
+	public void reset() {
+		stateStartSuggestedOffer = null;
+		currState = State.ASKFAVORITE;
+	}
+	
 	//Creates many states, fills null parameters with all possible values
 	private void massMachineStates(State start, State target, Event.EventClass ec, Event.SubClass esc) {
 		State[] startingStates = new State[] {start};
