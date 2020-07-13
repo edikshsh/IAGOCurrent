@@ -301,7 +301,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		 **/
 
 		if(e.getType().equals(Event.EventClass.GAME_START)) 
-		{		
+		{	
 			currentGameCount++;
 			ServletUtils.log("Game number is now " + currentGameCount + "... reconfiguring!", ServletUtils.DebugLevels.DEBUG);
 			AgentUtilsExtension aue = new AgentUtilsExtension(this);
@@ -331,6 +331,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 				resp.add(e0);
 			}
 			firstGame = false;
+			utils.initItemValuesMat();
 		}
 		return resp;
 	}
