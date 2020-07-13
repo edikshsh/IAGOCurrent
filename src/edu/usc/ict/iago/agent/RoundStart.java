@@ -62,6 +62,7 @@ public class RoundStart<State> extends BusinessLogic {
 	public LinkedList<Event> stateStart(Event e){
 		System.out.println("RoundStartAlgorithm stateStart()");
 		blState = BLState.SUCCESS;
+		continueFlow=true;
 		return agentCore.gameStart(e);
 	}
 	

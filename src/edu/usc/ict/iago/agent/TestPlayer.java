@@ -27,6 +27,7 @@ public class TestPlayer extends IAGOCoreVH {
 	
 	static TestBehavior behavior;
 	static int round = 0;
+	Event lastEvent;
 	public TestPlayer(String name, GameSpec game, Session session)
 	{
 
@@ -49,10 +50,11 @@ public class TestPlayer extends IAGOCoreVH {
 	public LinkedList<Event> getEventResponse(Event e){
 
 
-		if (e.getType() == Event.EventClass.GAME_START) {
+		// check to see that we do not loop the GAME_START recursively
+		if (e.getType() == Event.EventClass.GAME_START && lastEvent!= null && lastEvent.getType() != Event.EventClass.GAME_START) {
 			onNewRoundStart();
 		}
-
+		lastEvent = e;
 //		LinkedList<Event> resp = new LinkedList<Event>();
 //		Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE, newGameMessage, (int) (100*game.getMultiplier()));
 //		resp.add(e0);

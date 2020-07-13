@@ -93,9 +93,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 	
 	public void resetOnNewRound() {
 		currState = firstState;
-		stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
-		roundStartAlgorithm = new RoundStart(this.utils, this, this.game, (TestBehavior)behavior);
-
+		stackDivideAlgorithm = new StackDivide<StackDivide.State>(this.utils, this, this.game, (TestBehavior)behavior);
+		roundStartAlgorithm = new RoundStart<RoundStart.State>(this.utils, this, this.game, (TestBehavior)behavior);
 	}
 	
 	private void initStateMachine() {
@@ -185,28 +184,6 @@ public abstract class IAGOCoreVH extends GeneralVH
 		return currentGameCount;
 	}
 	
-	private void checkStackDivide(Event e) {
-		StackDivide stackDivideAlgorithm = new StackDivide(this.utils, this, this.game, (TestBehavior)behavior);
-		System.out.println(stackDivideAlgorithm.doesAcceptEvent(e));
-		Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS, "pos msg", (int) (100*game.getMultiplier()));
-		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
-		stackDivideAlgorithm.start(e0);
-		
-		Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG, "neg msg", (int) (100*game.getMultiplier()));
-		System.out.println("e1 is supported " + stackDivideAlgorithm.doesAcceptEvent(e1));
-		stackDivideAlgorithm.start(e1);
-		
-		Event e2 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, "happy", 200, (int) (100*game.getMultiplier()));
-
-		System.out.println("e2 is supported " + stackDivideAlgorithm.doesAcceptEvent(e2));
-		stackDivideAlgorithm.start(e2);
-		
-		System.out.println("e0 is supported " + stackDivideAlgorithm.doesAcceptEvent(e0));
-		stackDivideAlgorithm.start(e0);
-		
-		System.out.println("e2 is supported " + stackDivideAlgorithm.doesAcceptEvent(e2));
-		stackDivideAlgorithm.start(e2);
-	}
 	
 	/**
 	 * Agents work by responding to various events. This method describes how core agents go about selecting their responses.
@@ -217,11 +194,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 	@Override
 	public LinkedList<Event> getEventResponse(Event e){
 		LinkedList<Event> resp = new LinkedList<Event>();
-		LinkedList<Event> firstActions = new LinkedList<Event>();
-
-		if (e.getType() == Event.EventClass.GAME_START) {
-			firstActions = gameStart(e);
-		}
+//		LinkedList<Event> firstActions = new LinkedList<Event>();
+//
+//		if (e.getType() == Event.EventClass.GAME_START) {
+//			firstActions = gameStart(e);
+//		}
 		
 		System.out.println("CORE currState = " + currState.toString());
 		
@@ -229,6 +206,10 @@ public abstract class IAGOCoreVH extends GeneralVH
 		{
 			case ROUNDSTART:
 				resp = stateRoundStart(e);
+				if (roundStartAlgorithm.continueFlow) {
+					roundStartAlgorithm.continueFlow = false;
+					resp.addAll(getEventResponse(e));
+				}
 				break;
 			case STACKDIVIDE:
 				resp = stateStackDivide(e);
@@ -245,8 +226,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 				resp = stateDefault(e);
 				break;
 		}
-		firstActions.addAll(resp);
-		return firstActions;
+//		firstActions.addAll(resp);
+		return resp;
 	}
 
 
@@ -261,8 +242,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		else if (stackDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && stackDivideAlgorithm.doesAcceptEvent(e)) {
 			resp = stackDivideAlgorithm.start(e);
 			if (stackDivideAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
-				System.out.println("stackDivideAlgorithm done with state " + stackDivideAlgorithm.blState.toString());
-				currState = stateMachine.get(currState.toString() + "__" + stackDivideAlgorithm.blState.toString());
+				onChangeAlgorithms(stackDivideAlgorithm);
 			}
 			return resp;
 		}
@@ -276,8 +256,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		LinkedList<Event> resp;
 		resp = roundStartAlgorithm.start(e);
 		if (roundStartAlgorithm.blState != BLState.ONGOING) {
-			System.out.println("roundStartAlgorithm done with state " + roundStartAlgorithm.blState.toString());
-			currState = stateMachine.get(currState.toString() + "__" + roundStartAlgorithm.blState.toString());
+			onChangeAlgorithms(roundStartAlgorithm);
 		}
 		
 		return resp;
@@ -285,7 +264,9 @@ public abstract class IAGOCoreVH extends GeneralVH
 
 	
 	public void onChangeAlgorithms(BusinessLogic bl) {
-		
+		System.out.println("CORE onChangeAlgorithms() BLState = " + bl.blState.toString());
+		currState = stateMachine.get(currState.toString() + "__" + bl.blState.toString());
+		bl.reset();
 	}
 	
 	
@@ -330,6 +311,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE, newGameMessage, (int) (100*game.getMultiplier()));
 				resp.add(e0);
 			}
+			System.out.println("CORe first game = " + firstGame);
 			firstGame = false;
 			utils.initItemValuesMat();
 		}
@@ -346,517 +328,43 @@ public abstract class IAGOCoreVH extends GeneralVH
 			ServletUtils.log("Agent is currently being restrained", ServletUtils.DebugLevels.DEBUG);
 			return resp;
 		}
-		 
-
-		//should we lead with an offer?
-		if(!firstFlag && !this.disable)
-		{
-			ServletUtils.log("First offer being made.", ServletUtils.DebugLevels.DEBUG);
-			firstFlag = true;
-			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getFirstOffer(getHistory()), 0); 
-			if(e2.getOffer() != null)
-			{
-				ServletUtils.log("First offer isn't null.", ServletUtils.DebugLevels.DEBUG);
-				Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-				resp.add(e3);
-				Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE, messages.getProposalLangFirst(),  (int) (1000*game.getMultiplier()));
-				resp.add(e4);
-				lastOfferSent = e2.getOffer();
-				if(favorOfferIncoming)
-				{
-					favorOffer = lastOfferSent;
-					favorOfferIncoming = false;
-				}
-				resp.add(e2);
-			}
-
-			String revealBATNA = "Just so you know, I already have an offer for " + utils.myPresentedBATNA + " points, so I won't accept anything less.   What about you?";
-			Event e5 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.BATNA_INFO, utils.myPresentedBATNA, revealBATNA,  (int) (1000*game.getMultiplier()));
-			resp.add(e5);
-			disable = false;
-			
-			Event e6 = messages.getFavorBehavior(getHistory(), game, e);
-			
-			if (e6 != null && (e6.getType() == EventClass.OFFER_IN_PROGRESS || e6.getSubClass() == Event.SubClass.FAVOR_ACCEPT)) 
-			{
-				Event e7 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier())); 
-				if (e7.getOffer() != null)
-				{
-					String s1 = messages.getProposalLang(getHistory(), game);
-					Event e8 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
-					resp.add(e6);
-					resp.add(e7);
-					resp.add(e8);
-					this.lastOfferSent = e7.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-				} 
-			}
-			else 
-			{
-				resp.add(e6);
-			}
-
-		}
 
 		//what to do when player sends an expression -- react to it with text and our own expression
 		if(e.getType().equals(Event.EventClass.SEND_EXPRESSION))
 		{
-			reactToExpression(resp,e);
+			resp.addAll(defaultExpression(e));
 		}
 
 		// When to formally accept when player sends an incoming formal acceptance
 		if(e.getType().equals(Event.EventClass.FORMAL_ACCEPT))
 		{
-			Event lastOffer = utils.lastEvent(getHistory().getHistory(), Event.EventClass.SEND_OFFER);
-			Event lastTime = utils.lastEvent(getHistory().getHistory(), Event.EventClass.TIME);
-			
-			disable = false;
-			
-			int totalItems = 0;
-			for (int i = 0; i < game.getNumIssues(); i++)
-				totalItems += game.getIssueQuants()[i];
-			if(lastOffer != null && lastTime != null)
-			{
-				//approximation based on distributive case
-				int fairSplit = ((game.getNumIssues() + 1) * totalItems / 4);
-				//down to the wire, accept anything better than BATNA (less than 30 seconds from finishing time)
-				if(utils.myActualOfferValue(lastOffer.getOffer()) > game.getBATNA(getID()) && Integer.parseInt(lastTime.getMessage()) + 30 > game.getTotalTime()) 
-				{
-					Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-					resp.add(e0);
-					return resp;
-				}
-				//accept anything better than fair minus margin
+			resp.addAll(defaultFormalAccept(e));
 
-				if (behavior instanceof IAGOCompetitiveBehavior)
-				{
-					if(((IAGOCompetitiveBehavior) behavior).acceptOffer(lastOffer.getOffer())){
-						Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-						resp.add(e0);
-						return resp;
-					}
-				}
-				else if(utils.myActualOfferValue(lastOffer.getOffer()) > fairSplit - behavior.getAcceptMargin()) //accept anything better than fair minus margin
-				{
-					Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-					resp.add(e0);
-					return resp;
-				}
-				else
-				{
-					Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getRejectLang(getHistory(), game), (int) (700*game.getMultiplier()));
-					resp.add(e1);
-					behavior.updateAdverseEvents(1);
-					return resp;					
-				}
-			}
 		}
 
 		//what to do with delays on the part of the other player
 		if(e.getType().equals(Event.EventClass.TIME))
 		{
-			noResponse += 1;
-			for(int i = getHistory().getHistory().size() - 1 ; i > 0 && i > getHistory().getHistory().size() - 6; i--)//if something from anyone for four time intervals
-			{
-				Event e1 = getHistory().getHistory().get(i);
-				if(e1.getType() != Event.EventClass.TIME) 
-					noResponse = 0;
-			}
-
-			if(noResponse >= 2)
-			{
-				Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
-				// Theoretically, this block isn't necessary. Event e0 should just be a message returned by getWaitingLang
-				if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT)) 
-				{
-					Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier())); 
-					if (e2.getOffer() != null)
-					{
-						String s1 = messages.getProposalLang(getHistory(), game);
-						Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
-						resp.add(e0);
-						resp.add(e1);
-						resp.add(e2);
-						this.lastOfferSent = e2.getOffer();
-						if(favorOfferIncoming)
-						{
-							favorOffer = lastOfferSent;
-							favorOfferIncoming = false;
-						}
-					} 
-				}
-				else 
-				{
-					resp.add(e0);
-				}
-
-				noResponseFlag = true;
-			}
-			else if(noResponse >= 1 && noResponseFlag)
-			{
-				noResponseFlag = false;
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getTimingOffer(getHistory()), 0); 
-				if(e2.getOffer() != null)
-				{
-					Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-					resp.add(e3);
-					Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (1000*game.getMultiplier()));
-					resp.add(e4);
-					resp.add(e2);
-				}
-			}
-
-			// Times up
-			if(!timeFlag && game.getTotalTime() - Integer.parseInt(e.getMessage()) < 30)
-			{
-				timeFlag = true;
-				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.TIMING, messages.getEndOfTimeResponse(), (int) (700*game.getMultiplier()));
-				resp.add(e1);
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getFinalOffer(getHistory()), 0); 
-				if(e2.getOffer() != null)
-				{
-					resp.add(e2);
-					lastOfferSent = e2.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-				}
-			}
-
-			// At 90 second, computer agent will send prompt for user to talk about preferences
-			if (e.getMessage().equals("90") && this.getID() == History.OPPONENT_ID) 
-			{
-				String str = "By the way, will you tell me a little about your preferences?";
-				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_REQUEST, str, (int) (1000*game.getMultiplier()));
-				e1.setFlushable(false);
-				resp.add(e1);
-			}
-
-			return resp;
+			resp.addAll(defaultTime(e));
 		}
 
 		//what to do when the player sends an offer
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
-			Offer playerOffer = e.getOffer();//incoming offer
-
-			
-			boolean isOfferGood = utils.isOfferGood(behavior.getAllocated(),playerOffer);
-			
-			if(isOfferGood) {
-				behavior.updateAllocated(playerOffer);
-				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
-				if (eExpr != null) 
-				{
-					resp.add(eExpr);
-				}
-				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier())); 
-				resp.add(e0);
-				
-				return resp;
-				
-			} else {
-				Offer newOffer = behavior.getCounterOffer(playerOffer);
-				Event counterEvent = new Event(this.getID(), Event.EventClass.SEND_OFFER, newOffer, (int)(700 * game.getMultiplier()));
-				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, "I think this is a better offer", (int)(700 * game.getMultiplier()));
-				resp.add(counterEvent);
-				this.lastOfferSent = newOffer;
-				return resp;
-			}
-			
-//			ServletUtils.log("Agent Normalized ordering: " + utils.getMyOrdering(), ServletUtils.DebugLevels.DEBUG);
-//			ServletUtils.log("Optimal ordering: " + utils.getMinimaxOrdering(), ServletUtils.DebugLevels.DEBUG);
-
-//			this.lastOfferReceived = playerOffer; 
-
-///			boolean localFair = false;
-//			boolean totalFair = false;
-
-//			Offer allocated = behavior.getAllocated();//what we've already agreed on
-//			Offer conceded = behavior.getConceded();//what the agent has agreed on internally
-////			ServletUtils.log("Allocated Agent Value: " + utils.myActualOfferValue(allocated), ServletUtils.DebugLevels.DEBUG);
-////			ServletUtils.log("Conceded Agent Value: " + utils.myActualOfferValue(conceded), ServletUtils.DebugLevels.DEBUG);
-////			ServletUtils.log("Offered Agent Value: " + utils.myActualOfferValue(playerOffer), ServletUtils.DebugLevels.DEBUG);
-//			int playerDiff = (utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering()));
-//			ServletUtils.log("Player Difference: " + playerDiff, ServletUtils.DebugLevels.DEBUG);
-
-//			if(utils.myActualOfferValue(playerOffer) > utils.myActualOfferValue(allocated))
-//			{//net positive (o is a better offer than allocated)
-//				int myValue = utils.myActualOfferValue(playerOffer) - utils.myActualOfferValue(allocated) + behavior.getAcceptMargin();
-////				ServletUtils.log("My target: " + myValue, ServletUtils.DebugLevels.DEBUG);
-//				int opponentValue = utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()) - utils.adversaryValue(allocated, utils.getMinimaxOrdering());
-//				if(myValue > opponentValue)
-//					localFair = true;//offer improvement is within one max value item of the same for me and my opponent
-//			}
-
-//			if (behavior instanceof IAGOCompetitiveBehavior) 
-//			{
-//				totalFair = ((IAGOCompetitiveBehavior) behavior).acceptOffer(playerOffer);
-//			}
-//			else if(utils.myActualOfferValue(playerOffer) + behavior.getAcceptMargin() > utils.adversaryValue(playerOffer, utils.getMinimaxOrdering()))
-//				totalFair = true;//total offer still fair
-			
-//			//totalFair too hard, so always set to true here
-//			totalFair = true;
-//
-//			if (localFair && !totalFair)
-//			{
-//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getSemiFairEmotion(), 2000, (int) (700*game.getMultiplier()));
-//				if (eExpr != null)
-//				{
-//					resp.add(eExpr);
-//				}
-//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getSemiFairResponse(), (int) (700*game.getMultiplier()));
-//				resp.add(e0);
-//				behavior.updateAdverseEvents(1);
-//				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()),  (int) (700*game.getMultiplier()));
-//				if(e3.getOffer() != null)
-//				{
-//					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-//					resp.add(e1);
-//					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
-//					resp.add(e2);
-//					this.lastOfferSent = e3.getOffer();
-//					if(favorOfferIncoming)
-//					{
-//						favorOffer = lastOfferSent;
-//						favorOfferIncoming = false;
-//					}
-//					resp.add(e3);
-//				}
-//			}
-//			else if(localFair && totalFair)
-//			{
-//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
-//				if (eExpr != null) 
-//				{
-//					resp.add(eExpr);
-//				}
-//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier()));
-//
-//				resp.add(e0);
-//				ServletUtils.log("ACCEPTED OFFER!", ServletUtils.DebugLevels.DEBUG);
-//				behavior.updateAllocated(this.lastOfferReceived);
-//
-//				Event eFinalize = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-//				if(utils.isFullOffer(playerOffer))
-//					resp.add(eFinalize);
-//			}
-//			else
-//			{
-//				Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getUnfairEmotion(), 2000, (int) (700*game.getMultiplier()));
-//				if (eExpr != null) 
-//				{
-//					resp.add(eExpr);
-//				}
-//				Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getVHRejectLang(getHistory(), game), (int) (700*game.getMultiplier()));
-//				resp.add(e0);	
-//				behavior.updateAdverseEvents(1);
-//				Event e3 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier()));
-//				if(e3.getOffer() != null)
-//				{
-//					Event e1 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-//					resp.add(e1);
-//					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (3000*game.getMultiplier()));
-//					resp.add(e2);
-//					this.lastOfferSent = e3.getOffer();
-//					if(favorOfferIncoming)
-//					{
-//						favorOffer = lastOfferSent;
-//						favorOfferIncoming = false;
-//					}
-//					resp.add(e3);
-//				}
-//			}
-			
-			
-//			return resp;
+			resp.addAll(defaultSendOffer(e));
 		}
 
 		//what to do when the player sends a message (including offer acceptances and rejections)
 		if(e.getType().equals(Event.EventClass.SEND_MESSAGE))
 		{
-			Preference p;
-			if (e.getPreference() == null) 
-			{
-				p = null;
-			} else {
-				p = new Preference(e.getPreference().getIssue1(), e.getPreference().getIssue2(), e.getPreference().getRelation(), e.getPreference().isQuery());
-			}
-			
-			if (p != null && !p.isQuery()) //a preference was expressed
-			{
-				utils.addPref(p);
-				if(utils.reconcileContradictions())
-				{
-					//we simply drop the oldest expressed preference until we are reconciled.  This is not the best method, as it may not be the the most efficient route.
-					LinkedList<String> dropped = new LinkedList<String>();
-					dropped.add(IAGOCoreMessage.prefToEnglish(utils.dequeuePref(), game));
-					int overflowCount = 0;
-					while(utils.reconcileContradictions() && overflowCount < 5)
-					{
-						dropped.add(IAGOCoreMessage.prefToEnglish(utils.dequeuePref(), game));
-						overflowCount++;
-					}
-					String drop = "";
-					for (String s: dropped)
-						drop += "\"" + s + "\", and ";
-
-					drop = drop.substring(0, drop.length() - 6);//remove last 'and'
-
-					Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.CONFUSION,
-							messages.getContradictionResponse(drop), (int) (2000*game.getMultiplier()));
-					e1.setFlushable(false);
-					resp.add(e1);
-				}
-			}
-
-			String expr = expression.getExpression(getHistory());
-			if (expr != null) 
-			{
-				Event e0 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expr, 2000, (int) (700*game.getMultiplier()));
-				resp.add(e0);
-			}
-
-		
-			Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
-			if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT)) 
-			{
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier()));
-				if (e2.getOffer() != null) 
-				{
-					String s1 = messages.getProposalLang(getHistory(), game);
-					Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
-					resp.add(e0);
-					resp.add(e1);
-					resp.add(e2);
-					this.lastOfferSent = e2.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-				} 
-			} else {
-				resp.add(e0);
-			}
-
-
-			if(behavior instanceof IAGOCompetitiveBehavior && e.getSubClass() == Event.SubClass.BATNA_INFO)
-			{
-				((IAGOCompetitiveBehavior)behavior).resetConcessionCurve();
-			}
-
-			boolean offerRequested = (e.getSubClass() == Event.SubClass.OFFER_REQUEST_NEG || e.getSubClass() == Event.SubClass.OFFER_REQUEST_POS);
-						
-			if(offerRequested)
-			{	
-				if(utils.adversaryBATNA + utils.myPresentedBATNA > utils.getMaxPossiblePoints()) 
-				{
-					String walkAway = "Actually, I won't be able to offer you anything that gives you " + utils.adversaryBATNA + " points. I think I'm going to have to walk "
-							+ "away, unless you were lying.";
-					Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.THREAT_NEG, utils.adversaryBATNA, walkAway, (int) (2000*game.getMultiplier()));
-					resp.add(e2);
-				}
-				else 
-				{
-					Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (3000*game.getMultiplier()));
-					if (e2.getOffer() == null) 
-					{
-						String response = "Actually, I'm having trouble finding an offer that works for both of us.";
-						Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.THREAT_POS, response, (int) (2000*game.getMultiplier()));
-						if (utils.adversaryBATNA != -1) 
-						{
-							response += " Are you sure you can't accept anything less than " + utils.adversaryBATNA + " points?";
-							e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.BATNA_REQUEST, utils.adversaryBATNA, response, (int) (2000*game.getMultiplier()));
-						}					
-						resp.add(e4);
-						ServletUtils.log("Null Offer", ServletUtils.DebugLevels.DEBUG);
-					}
-					else 
-					{
-						Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-						resp.add(e3);
-
-						Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
-						resp.add(e4);
-						this.lastOfferSent = e2.getOffer();
-						if(favorOfferIncoming)
-						{
-							favorOffer = lastOfferSent;
-							favorOfferIncoming = false;
-						}
-						resp.add(e2);
-
-					}
-				}
-			}
-
-			if(e.getSubClass() == Event.SubClass.OFFER_ACCEPT)//offer accepted
-			{
-				if(this.lastOfferSent != null)
-				{
-					behavior.updateAllocated(this.lastOfferSent);
-					if(lastOfferSent.equals(favorOffer))
-						modifyLedger();
-					else
-						myLedger.offerLedger = 0;
-				}
-
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getAcceptOfferFollowup(getHistory()), (int) (3000*game.getMultiplier()));
-				if(e2.getOffer() != null)
-				{
-					Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-					resp.add(e3);
-					Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
-					resp.add(e4);
-					this.lastOfferSent = e2.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-					resp.add(e2);		
-				}
-			}
-
-			if(e.getSubClass() == Event.SubClass.OFFER_REJECT)//offer rejected
-			{	
-				behavior.updateAdverseEvents(1);
-				myLedger.offerLedger = 0;
-
-				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getRejectOfferFollowup(getHistory()), (int) (3000*game.getMultiplier()));
-				if(e2.getOffer() != null)
-				{
-					Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
-					resp.add(e3);
-					Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
-					resp.add(e4);
-					this.lastOfferSent = e2.getOffer();
-					if(favorOfferIncoming)
-					{
-						favorOffer = lastOfferSent;
-						favorOfferIncoming = false;
-					}
-
-					resp.add(e2);	
-				}
-			}
-			return resp;
+			resp.addAll(defaultSendMessage(e));
 		}
 		return resp;
 	}
 
 	
-	
-	
-	public LinkedList<Event> reactToExpression(LinkedList<Event> resp, Event e) {
+	public LinkedList<Event> defaultExpression(Event e) {
+		LinkedList<Event> resp = new LinkedList<Event>(); 
 		String expr = expression.getExpression(getHistory());
 		if (expr != null)
 		{
@@ -889,7 +397,341 @@ public abstract class IAGOCoreVH extends GeneralVH
 		disable = false;
 		return resp;
 	}
+	
+	private LinkedList<Event> defaultFormalAccept(Event e){
+		LinkedList<Event> resp = new LinkedList<Event>();
+		Event lastOffer = utils.lastEvent(getHistory().getHistory(), Event.EventClass.SEND_OFFER);
+		Event lastTime = utils.lastEvent(getHistory().getHistory(), Event.EventClass.TIME);
+		
+		disable = false;
+		
+		int totalItems = 0;
+		for (int i = 0; i < game.getNumIssues(); i++)
+			totalItems += game.getIssueQuants()[i];
+		if(lastOffer != null && lastTime != null)
+		{
+			//approximation based on distributive case
+			int fairSplit = ((game.getNumIssues() + 1) * totalItems / 4);
+			//down to the wire, accept anything better than BATNA (less than 30 seconds from finishing time)
+			if(utils.myActualOfferValue(lastOffer.getOffer()) > game.getBATNA(getID()) && Integer.parseInt(lastTime.getMessage()) + 30 > game.getTotalTime()) 
+			{
+				Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
+				resp.add(e0);
+				return resp;
+			}
+			//accept anything better than fair minus margin
 
+			if (behavior instanceof IAGOCompetitiveBehavior)
+			{
+				if(((IAGOCompetitiveBehavior) behavior).acceptOffer(lastOffer.getOffer())){
+					Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
+					resp.add(e0);
+					return resp;
+				}
+			}
+			else if(utils.myActualOfferValue(lastOffer.getOffer()) > fairSplit - behavior.getAcceptMargin()) //accept anything better than fair minus margin
+			{
+				Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
+				resp.add(e0);
+				return resp;
+			}
+			else
+			{
+				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, messages.getRejectLang(getHistory(), game), (int) (700*game.getMultiplier()));
+				resp.add(e1);
+				behavior.updateAdverseEvents(1);
+				return resp;					
+			}
+		}
+		return resp;
+	}
+
+	private LinkedList<Event> defaultTime(Event e){
+		LinkedList<Event> resp = new LinkedList<Event>();
+
+		noResponse += 1;
+		for(int i = getHistory().getHistory().size() - 1 ; i > 0 && i > getHistory().getHistory().size() - 6; i--)//if something from anyone for four time intervals
+		{
+			Event e1 = getHistory().getHistory().get(i);
+			if(e1.getType() != Event.EventClass.TIME) 
+				noResponse = 0;
+		}
+
+		if(noResponse >= 2)
+		{
+			Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
+			// Theoretically, this block isn't necessary. Event e0 should just be a message returned by getWaitingLang
+			if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT)) 
+			{
+				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier())); 
+				if (e2.getOffer() != null)
+				{
+					String s1 = messages.getProposalLang(getHistory(), game);
+					Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
+					resp.add(e0);
+					resp.add(e1);
+					resp.add(e2);
+					this.lastOfferSent = e2.getOffer();
+					if(favorOfferIncoming)
+					{
+						favorOffer = lastOfferSent;
+						favorOfferIncoming = false;
+					}
+				} 
+			}
+			else 
+			{
+				resp.add(e0);
+			}
+
+			noResponseFlag = true;
+		}
+		else if(noResponse >= 1 && noResponseFlag)
+		{
+			noResponseFlag = false;
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getTimingOffer(getHistory()), 0); 
+			if(e2.getOffer() != null)
+			{
+				Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+				resp.add(e3);
+				Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game),  (int) (1000*game.getMultiplier()));
+				resp.add(e4);
+				resp.add(e2);
+			}
+		}
+
+		// Times up
+		if(!timeFlag && game.getTotalTime() - Integer.parseInt(e.getMessage()) < 30)
+		{
+			timeFlag = true;
+			Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.TIMING, messages.getEndOfTimeResponse(), (int) (700*game.getMultiplier()));
+			resp.add(e1);
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getFinalOffer(getHistory()), 0); 
+			if(e2.getOffer() != null)
+			{
+				resp.add(e2);
+				lastOfferSent = e2.getOffer();
+				if(favorOfferIncoming)
+				{
+					favorOffer = lastOfferSent;
+					favorOfferIncoming = false;
+				}
+			}
+		}
+
+		// At 90 second, computer agent will send prompt for user to talk about preferences
+		if (e.getMessage().equals("90") && this.getID() == History.OPPONENT_ID) 
+		{
+			String str = "By the way, will you tell me a little about your preferences?";
+			Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_REQUEST, str, (int) (1000*game.getMultiplier()));
+			e1.setFlushable(false);
+			resp.add(e1);
+		}
+
+		return resp;
+	}
+	
+	private LinkedList<Event> defaultSendOffer(Event e){
+		LinkedList<Event> resp = new LinkedList<Event>();
+		Offer playerOffer = e.getOffer();//incoming offer
+
+		
+		boolean isOfferGood = utils.isOfferGood(behavior.getAllocated(),playerOffer);
+		
+		if(isOfferGood) {
+			behavior.updateAllocated(playerOffer);
+			Event eExpr = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expression.getFairEmotion(), 2000, (int) (700*game.getMultiplier()));
+			if (eExpr != null) 
+			{
+				resp.add(eExpr);
+			}
+			Event e0 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, messages.getVHAcceptLang(getHistory(), game), (int) (700*game.getMultiplier())); 
+			resp.add(e0);
+			
+			return resp;
+			
+		} else {
+			Offer newOffer = behavior.getCounterOffer(playerOffer);
+			Event counterEvent = new Event(this.getID(), Event.EventClass.SEND_OFFER, newOffer, (int)(700 * game.getMultiplier()));
+			Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, "I think this is a better offer", (int)(700 * game.getMultiplier()));
+			resp.add(counterEvent);
+			this.lastOfferSent = newOffer;
+			return resp;
+		}
+		
+	}
+	
+	private LinkedList<Event> defaultSendMessage(Event e){
+		LinkedList<Event> resp = new LinkedList<Event>();
+		Preference p;
+		if (e.getPreference() == null) 
+		{
+			p = null;
+		} else {
+			p = new Preference(e.getPreference().getIssue1(), e.getPreference().getIssue2(), e.getPreference().getRelation(), e.getPreference().isQuery());
+		}
+		
+		if (p != null && !p.isQuery()) //a preference was expressed
+		{
+			utils.addPref(p);
+			if(utils.reconcileContradictions())
+			{
+				//we simply drop the oldest expressed preference until we are reconciled.  This is not the best method, as it may not be the the most efficient route.
+				LinkedList<String> dropped = new LinkedList<String>();
+				dropped.add(IAGOCoreMessage.prefToEnglish(utils.dequeuePref(), game));
+				int overflowCount = 0;
+				while(utils.reconcileContradictions() && overflowCount < 5)
+				{
+					dropped.add(IAGOCoreMessage.prefToEnglish(utils.dequeuePref(), game));
+					overflowCount++;
+				}
+				String drop = "";
+				for (String s: dropped)
+					drop += "\"" + s + "\", and ";
+
+				drop = drop.substring(0, drop.length() - 6);//remove last 'and'
+
+				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.CONFUSION,
+						messages.getContradictionResponse(drop), (int) (2000*game.getMultiplier()));
+				e1.setFlushable(false);
+				resp.add(e1);
+			}
+		}
+
+		String expr = expression.getExpression(getHistory());
+		if (expr != null) 
+		{
+			Event e0 = new Event(this.getID(), Event.EventClass.SEND_EXPRESSION, expr, 2000, (int) (700*game.getMultiplier()));
+			resp.add(e0);
+		}
+
+	
+		Event e0 = messages.getVerboseMessageResponse(getHistory(), game, e);
+		if (e0 != null && (e0.getType() == EventClass.OFFER_IN_PROGRESS || e0.getSubClass() == Event.SubClass.FAVOR_ACCEPT)) 
+		{
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (700*game.getMultiplier()));
+			if (e2.getOffer() != null) 
+			{
+				String s1 = messages.getProposalLang(getHistory(), game);
+				Event e1 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, s1, (int) (2000*game.getMultiplier()));
+				resp.add(e0);
+				resp.add(e1);
+				resp.add(e2);
+				this.lastOfferSent = e2.getOffer();
+				if(favorOfferIncoming)
+				{
+					favorOffer = lastOfferSent;
+					favorOfferIncoming = false;
+				}
+			} 
+		} else {
+			resp.add(e0);
+		}
+
+
+		if(behavior instanceof IAGOCompetitiveBehavior && e.getSubClass() == Event.SubClass.BATNA_INFO)
+		{
+			((IAGOCompetitiveBehavior)behavior).resetConcessionCurve();
+		}
+
+		boolean offerRequested = (e.getSubClass() == Event.SubClass.OFFER_REQUEST_NEG || e.getSubClass() == Event.SubClass.OFFER_REQUEST_POS);
+					
+		if(offerRequested)
+		{	
+			if(utils.adversaryBATNA + utils.myPresentedBATNA > utils.getMaxPossiblePoints()) 
+			{
+				String walkAway = "Actually, I won't be able to offer you anything that gives you " + utils.adversaryBATNA + " points. I think I'm going to have to walk "
+						+ "away, unless you were lying.";
+				Event e2 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.THREAT_NEG, utils.adversaryBATNA, walkAway, (int) (2000*game.getMultiplier()));
+				resp.add(e2);
+			}
+			else 
+			{
+				Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getNextOffer(getHistory()), (int) (3000*game.getMultiplier()));
+				if (e2.getOffer() == null) 
+				{
+					String response = "Actually, I'm having trouble finding an offer that works for both of us.";
+					Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.THREAT_POS, response, (int) (2000*game.getMultiplier()));
+					if (utils.adversaryBATNA != -1) 
+					{
+						response += " Are you sure you can't accept anything less than " + utils.adversaryBATNA + " points?";
+						e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.BATNA_REQUEST, utils.adversaryBATNA, response, (int) (2000*game.getMultiplier()));
+					}					
+					resp.add(e4);
+					ServletUtils.log("Null Offer", ServletUtils.DebugLevels.DEBUG);
+				}
+				else 
+				{
+					Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+					resp.add(e3);
+
+					Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
+					resp.add(e4);
+					this.lastOfferSent = e2.getOffer();
+					if(favorOfferIncoming)
+					{
+						favorOffer = lastOfferSent;
+						favorOfferIncoming = false;
+					}
+					resp.add(e2);
+
+				}
+			}
+		}
+
+		if(e.getSubClass() == Event.SubClass.OFFER_ACCEPT)//offer accepted
+		{
+			if(this.lastOfferSent != null)
+			{
+				behavior.updateAllocated(this.lastOfferSent);
+				if(lastOfferSent.equals(favorOffer))
+					modifyLedger();
+				else
+					myLedger.offerLedger = 0;
+			}
+
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getAcceptOfferFollowup(getHistory()), (int) (3000*game.getMultiplier()));
+			if(e2.getOffer() != null)
+			{
+				Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+				resp.add(e3);
+				Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
+				resp.add(e4);
+				this.lastOfferSent = e2.getOffer();
+				if(favorOfferIncoming)
+				{
+					favorOffer = lastOfferSent;
+					favorOfferIncoming = false;
+				}
+				resp.add(e2);		
+			}
+		}
+
+		if(e.getSubClass() == Event.SubClass.OFFER_REJECT)//offer rejected
+		{	
+			behavior.updateAdverseEvents(1);
+			myLedger.offerLedger = 0;
+
+			Event e2 = new Event(this.getID(), Event.EventClass.SEND_OFFER, behavior.getRejectOfferFollowup(getHistory()), (int) (3000*game.getMultiplier()));
+			if(e2.getOffer() != null)
+			{
+				Event e3 = new Event(this.getID(), Event.EventClass.OFFER_IN_PROGRESS, 0);
+				resp.add(e3);
+				Event e4 = new Event(this.getID(), Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_PROPOSE, messages.getProposalLang(getHistory(), game), (int) (1000*game.getMultiplier()));
+				resp.add(e4);
+				this.lastOfferSent = e2.getOffer();
+				if(favorOfferIncoming)
+				{
+					favorOffer = lastOfferSent;
+					favorOfferIncoming = false;
+				}
+
+				resp.add(e2);	
+			}
+		}
+		return resp;
+		
+	}
 	/**
 	 * Every agent needs a name to select the art that will be used. Currently only 4 names are supported: Brad, Ellie, Rens, and Laura.
 	 * Note: This is NOT the name that users will see when they negotiate with the agent.
