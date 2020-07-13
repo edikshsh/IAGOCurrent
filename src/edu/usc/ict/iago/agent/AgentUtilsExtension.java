@@ -56,7 +56,7 @@ class AgentUtilsExtension
 	}
 	
 	// sorts the itemsMat in a descending order, by column
-	public void sortItemsMat(int col)
+	public int[][] sortItemsMat(int col)
 	{
 		int[] tempRow = new int[itemsMat[0].length];
 		for (int i=0; i<game.getNumIssues(); i++) {
@@ -68,6 +68,7 @@ class AgentUtilsExtension
 				}
 			}
 		}
+		return itemsMat;
 	}
 	/**
 	 * Constructor for the AUE.
@@ -563,7 +564,15 @@ class AgentUtilsExtension
 		}
 		return totalPoints;
 	}
-	
+	public int getPointsOfAllocatedItems(Offer o) {
+		int maxValue = getMaxPossiblePoints();
+		int[] quantities = game.getIssueQuants();
+		for(int i = 0 ; i< game.getNumIssues(); i++) {
+			String s = game.getIssuePluralNames()[i];
+			maxValue -= o.getItem(i)[freeRow]*game.getSimplePoints(agent.getID()).get(s);
+		}
+		return maxValue;
+	}
 	/**
 	 * determines if a pair of given BATNA's are in conflict, i.e. an offer doesn't exist to satisfy both BATNAs.
 	 * @param agentBATNA		can be either the true BATNA, or the presented BATNA, depending on the circumstances
@@ -898,6 +907,7 @@ class AgentUtilsExtension
 		int oldOfferValueLost = pointsLostInOffer(allocated);
 		
 		ArrayList<Integer> myOrder = getMyOrdering();
+		int minValue = getPlayerFavoriteFreeResourceInOffer(o);
 		
 //		var simplePoints = game.getSimplePoints(StaticData.playerId);
 //		ArrayList<Integer> agentResourceValues = new ArrayList<>();
@@ -906,29 +916,39 @@ class AgentUtilsExtension
 //		Collections.reverse(agentResourceValues);
 //		int agentBestResourceStackValue = agentResourceValues.get(0) * game.getIssueQuants()[];
 		
-		sortItemsMat(realIndex);
-		int[] totalStackValues = new int[game.getNumIssues()];
-		for (int i=0; i<totalStackValues.length ; i++) {
-			totalStackValues[i] = itemsMat[i][quantIndex] * itemsMat[i][valueIndex];
+		itemsMat = sortItemsMat(valueIndex);
+		int minIssues = itemsMat.length/2;
+		int prefValue = 0;
+		for(int i = 0; i< minIssues; i++) {
+			prefValue +=  (o.getItem(itemsMat[i][realIndex])[myRow]+ o.getItem(itemsMat[i][realIndex])[adversaryRow]) * itemsMat[i][valueIndex];
 		}
-		
-		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
-		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
-		
-		System.out.println("Agent can receive a maximum of " + totalResourceValueThisRound + " points this round");
-		System.out.println("Last offer, agent received " + oldOfferValue + " points, and lost " + oldOfferValueLost + " points to adversary");
-		System.out.println("This offer, agent received " + newOfferValue + " points, and lost " + newOfferValueLost + " points to adversary");
-		System.out.println("Last offer gain ratio = " + oldGainRatio + ", new offer gain ratio = " + newGainRatio);
-
-		boolean isGainBetter = newGainRatio > oldGainRatio;
-		boolean isBetterThanBATNA = true;
-		if (isFullOffer(o)) {
-			isBetterThanBATNA = newOfferValue > myPresentedBATNA;
+		prefValue = prefValue > minValue? prefValue: minValue;
+		if(newOfferValue < prefValue) {
+			return false;
+		} else {
+			if(newOfferValue < oldOfferValue) {
+				return false;
+			} else {
+				return true;
+			}
 		}
-		
-		boolean isOfferGood = isGainBetter && isBetterThanBATNA;
-		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
-		return isOfferGood;
+//		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
+//		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);
+//		
+//		System.out.println("Agent can receive a maximum of " + totalResourceValueThisRound + " points this round");
+//		System.out.println("Last offer, agent received " + oldOfferValue + " points, and lost " + oldOfferValueLost + " points to adversary");
+//		System.out.println("This offer, agent received " + newOfferValue + " points, and lost " + newOfferValueLost + " points to adversary");
+//		System.out.println("Last offer gain ratio = " + oldGainRatio + ", new offer gain ratio = " + newGainRatio);
+//
+//		boolean isGainBetter = newGainRatio > oldGainRatio;
+//		boolean isBetterThanBATNA = true;
+//		if (isFullOffer(o)) {
+//			isBetterThanBATNA = newOfferValue > myPresentedBATNA;
+//		}
+//		
+//		boolean isOfferGood = isGainBetter && isBetterThanBATNA;
+//		System.out.println("Offer is " + (isOfferGood ? "good" : "bad"));
+//		return isOfferGood;
 	}
 	
 
