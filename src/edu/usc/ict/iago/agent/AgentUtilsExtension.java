@@ -31,22 +31,44 @@ class AgentUtilsExtension
 	public int adversaryRow;
 	private boolean isFixedPie = false;
 	
-	int[][] itemValuesMat;
+	int[][] itemsMat;
 	int realIndex=0;
 	int prefIndex=1;
 	int valueIndex=2;
+	int quantIndex=3;
 	
 	public void initItemValuesMat() {
-		itemValuesMat = new int[game.getNumIssues()][3];
-		
+		itemsMat = new int[game.getNumIssues()][4];
+		var values = game.getSimplePoints(StaticData.playerId);
+		var prefs = getMyOrdering();
+		String[] pluralNames = game.getIssuePluralNames();
 		for (int i=0; i<game.getNumIssues(); i++) {
-			for (int j=0; j<itemValuesMat[0].length; j++) {
-				
+			for (int j=0; j<itemsMat[0].length; j++) {
+				itemsMat[i][realIndex] = i;
+				itemsMat[i][prefIndex] = prefs.get(i);
+				itemsMat[i][valueIndex] = game.getSimplePoints(StaticData.playerId).get(pluralNames[i]);
+				itemsMat[i][quantIndex] = game.getIssueQuants()[i];
 			}
 		}
 		
+		sortItemsMat(realIndex);
+		sortItemsMat(valueIndex);
 	}
-
+	
+	// sorts the itemsMat in a descending order, by column
+	public void sortItemsMat(int col)
+	{
+		int[] tempRow = new int[itemsMat[0].length];
+		for (int i=0; i<game.getNumIssues(); i++) {
+			for (int j=0; j<itemsMat[0].length; j++) {
+				if (itemsMat[i][col] < itemsMat[j][col]) {
+					tempRow = itemsMat[i];
+					itemsMat[i] = itemsMat[j];
+					itemsMat[j] = tempRow;
+				}
+			}
+		}
+	}
 	/**
 	 * Constructor for the AUE.
 	 * @param core The VH associated with this instance of AUE.
@@ -883,6 +905,12 @@ class AgentUtilsExtension
 //		Collections.sort(agentResourceValues);
 //		Collections.reverse(agentResourceValues);
 //		int agentBestResourceStackValue = agentResourceValues.get(0) * game.getIssueQuants()[];
+		
+		sortItemsMat(realIndex);
+		int[] totalStackValues = new int[game.getNumIssues()];
+		for (int i=0; i<totalStackValues.length ; i++) {
+			totalStackValues[i] = itemsMat[i][quantIndex] * itemsMat[i][valueIndex];
+		}
 		
 		float oldGainRatio = (oldOfferValue == 0 ? (float)0.5: oldOfferValue)  /(oldOfferValueLost == 0 ? (float)0.5: oldOfferValueLost);
 		float newGainRatio = (newOfferValue == 0 ? (float)0.5: newOfferValue)  /(newOfferValueLost == 0 ? (float)0.5: newOfferValueLost);

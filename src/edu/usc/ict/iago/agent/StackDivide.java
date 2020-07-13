@@ -9,7 +9,7 @@ import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
 
-public class StackDivide<State> extends BusinessLogic<State> {
+public class StackDivide<State> extends BusinessLogic {
 	
 	private IAGOCoreVH agentCore;
 	private AgentUtilsExtension utils;
