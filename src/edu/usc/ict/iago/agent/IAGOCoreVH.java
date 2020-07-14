@@ -232,6 +232,15 @@ public abstract class IAGOCoreVH extends GeneralVH
 					resp.addAll(stateDefault(e));
 				}
 				break;
+			case LYING:
+				resp = stateLying(e);
+				// if the algorithm requested the main flow to continue handling the event
+				if (lyingAlgorithm.continueFlow) {
+					lyingAlgorithm.continueFlow = false;
+					resp.addAll(stateDefault(e));
+				}
+				break;
+				
 			case PLAYEROFFER:
 				resp = statePlayerOffer1(e);
 				// if the algorithm requested the main flow to continue handling the event
@@ -275,6 +284,26 @@ public abstract class IAGOCoreVH extends GeneralVH
 		}
 		System.out.println("resourceDivideAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
 				" when on state " + resourceDivideAlgorithm.currState.toString() + ", BLState  =" + resourceDivideAlgorithm.blState);
+		
+		return stateDefault(e);
+	}
+	private LinkedList<Event> stateLying(Event e){
+		LinkedList<Event> resp;
+		
+		if(lyingAlgorithm.blState == BLState.START) {
+			resp = lyingAlgorithm.start(e);
+			System.out.println("lyingAlgorithm started");
+			return resp;
+		}
+		else if (lyingAlgorithm.blState == BusinessLogic.BLState.ONGOING && lyingAlgorithm.doesAcceptEvent(e)) {
+			resp = lyingAlgorithm.start(e);
+			if (lyingAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
+				onChangeAlgorithms(lyingAlgorithm);
+			}
+			return resp;
+		}
+		System.out.println("lyingAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
+				" when on state " + lyingAlgorithm.currState.toString() + ", BLState  =" + resourceDivideAlgorithm.blState);
 		
 		return stateDefault(e);
 	}
