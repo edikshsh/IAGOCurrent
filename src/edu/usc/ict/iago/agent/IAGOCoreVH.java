@@ -105,7 +105,11 @@ public abstract class IAGOCoreVH extends GeneralVH
 	
 	private void initStateMachine() {
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
-		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
+		if (TestPlayer.round == 2) {
+			stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
+		} else {
+			stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.LYING);
+		}
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
 		stateMachine.put(State.LYING.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.PLAYEROFFER);

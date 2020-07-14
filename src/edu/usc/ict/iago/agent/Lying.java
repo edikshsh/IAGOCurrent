@@ -22,6 +22,7 @@ public class Lying<State> extends BusinessLogic {
 	private StateEventController<State> stateEventController; // Just here to let us use the StateEvent functions (can't be static because functions are generic)
 	public State currState = State.ASKFAVORITE;
 	private Offer stateStartSuggestedOffer = null;
+//	public boolean didEnterLying = false;
 	
 	enum State {
 		 ASKFAVORITE,
@@ -170,6 +171,11 @@ public class Lying<State> extends BusinessLogic {
 		LinkedList<Event> resp = new LinkedList<Event>();
 		Offer offer = new Offer(game.getNumIssues());
 		int[][] offerMat = utils.offerToMatrix(offer);
+		int temp = game.getNumIssues();
+		for (int i=0; i<temp; i++) {
+			offerMat[utils.freeRow][i] = game.getIssueQuants()[i];
+		}
+		offer = utils.matrixToOffer(offerMat);
 		int agentFave = this.utils.getAgentFavoriteFreeResourceInOffer(offer);
 		int playerFave = this.utils.getPlayerFavoriteFreeResourceInOffer(offer);
 		if(event.getSubClass().equals(Event.SubClass.OFFER_REJECT)) {
@@ -181,21 +187,23 @@ public class Lying<State> extends BusinessLogic {
 			// Moving 1.5 stacks of favorite items in exchange of 1 stack of players favorite item
 			offerMat[utils.myRow][agentFave] = offerMat[utils.freeRow][agentFave];
 			offerMat[utils.freeRow][agentFave] = 0;
-			playerFave = this.utils.getAgentFavoriteFreeResourceInOffer(offer);
+			agentFave = this.utils.getAgentFavoriteFreeResourceInOffer(offer);
 			int numOfItems = offerMat[utils.myRow][0];
 			int halfItems = (int) Math.ceil(numOfItems/2);
 			offerMat[utils.myRow][agentFave] = halfItems;
 			offerMat[utils.freeRow][agentFave] = numOfItems - halfItems;
 			offerMat[utils.adversaryRow][playerFave] = offerMat[utils.freeRow][playerFave];
-			
+			offerMat[utils.freeRow][playerFave] = 0; 
+
 		} else {
 			
 			offerMat[utils.myRow][agentFave] = offerMat[utils.freeRow][agentFave];
 			offerMat[utils.freeRow][agentFave] = 0;
-			playerFave = this.utils.getAgentFavoriteFreeResourceInOffer(offer);
+			agentFave = this.utils.getAgentFavoriteFreeResourceInOffer(utils.matrixToOffer(offerMat));
 			offerMat[utils.myRow][agentFave] = offerMat[utils.freeRow][agentFave];
 			offerMat[utils.freeRow][agentFave] = 0;
 			offerMat[utils.adversaryRow][playerFave] = offerMat[utils.freeRow][playerFave];
+			offerMat[utils.freeRow][playerFave] = 0; 
 		}
 		resp.add(EventHelper.message("I think this is a good offer"));
 		Offer stackOffer = utils.matrixToOffer(offerMat);

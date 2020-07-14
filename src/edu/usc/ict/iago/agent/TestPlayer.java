@@ -68,6 +68,7 @@ public class TestPlayer extends IAGOCoreVH {
 	
 	// Called once when a new round starts
 	public void onNewRoundStart() {
+		System.out.println("Going from round " + round + " to round " + (round +1));
 		round++;
 		var simplePoints = game.getSimplePoints(this.getID());
 		behavior.setItemPoints(simplePoints);
