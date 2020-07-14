@@ -9,6 +9,7 @@ import edu.usc.ict.iago.utils.Event.EventClass;
 import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
+import edu.usc.ict.iago.utils.Preference;
 import edu.usc.ict.iago.utils.Preference.Relation;
 
 public class StackDivide<State> extends BusinessLogic {
@@ -138,17 +139,31 @@ public class StackDivide<State> extends BusinessLogic {
 	//Started an offer
 	private LinkedList<Event> stateMakeDeal1(Event event){
 		LinkedList<Event> resp = new LinkedList<Event>();
-		if (event.getPreference()!= null && !event.getPreference().isQuery()) {
-			utils.addPref(event.getPreference());
+		Preference pref = event.getPreference();
+		
+		if (pref != null && !pref.isQuery()) {
+			utils.addPref(pref);
 			utils.reconcileContradictionsAll();
 			
-			if (event.getPreference().getRelation() == Relation.BEST) {
-				resp.add(EventHelper.message("Nice, now I  have all I need to divide the resources"));
-				currState = State.MAKEDEAL2;
-				resp.addAll(makeDeal(event));
+			if (pref.getRelation() == Relation.BEST) {
+				if (!PreferenceHelper.missingInfo(pref)) {
+					resp.add(EventHelper.expression(Expression.HAPPY));
+				}
+				resp.add(EventHelper.message("Nice, now I have all I need to divide the resources"));
+				if (PreferenceHelper.missingInfo(pref)) {
+					resp.add(EventHelper.message("Not!"));
+					resp.add(EventHelper.message("Can you please give some usable info?"));
+				} else {
+					currState = State.MAKEDEAL2;
+					resp.addAll(makeDeal(event));
+				}
 			} else {
-				resp.add(EventHelper.message("Sorry, It's a bit hard to tell what your favorite item is, although it does get me closer to the truth"));
-				resp.add(EventHelper.message("Can you please give some more info?"));
+				resp.add(EventHelper.message("Sorry, It's a bit hard to tell what your favorite item is."));
+				if (PreferenceHelper.missingInfo(pref)) {
+					resp.add(EventHelper.message("Can you please give some usable info?"));
+				} else {
+					resp.add(EventHelper.message("Can you please give some more info?"));
+				}
 			}
 		}
 		return resp;
@@ -159,13 +174,19 @@ public class StackDivide<State> extends BusinessLogic {
 		if (event.getPreference()!= null && !event.getPreference().isQuery()) {
 			utils.addPref(event.getPreference());
 			utils.reconcileContradictionsAll();
-			
-			if (event.getPreference().getRelation() == Relation.BEST) {
-				resp.add(EventHelper.expression(Expression.HAPPY));
-				resp.add(EventHelper.message("Nice, now I  have all I need to divide the resources"));
-			} else {
+			Preference pref = event.getPreference();
+
+			if (PreferenceHelper.missingInfo(pref)) {
 				resp.add(EventHelper.expression(Expression.NEUTRAL));
-				resp.add(EventHelper.message("Well, close enough I guess?"));
+				resp.add(EventHelper.message("Well, a guess it is then."));
+			} else {
+				if (event.getPreference().getRelation() == Relation.BEST) {
+					resp.add(EventHelper.expression(Expression.HAPPY));
+					resp.add(EventHelper.message("Nice, now I have all I need to divide the resources"));
+				} else {
+					resp.add(EventHelper.expression(Expression.NEUTRAL));
+					resp.add(EventHelper.message("Well, close enough I guess?"));
+				}
 			}
 			resp.addAll(makeDeal(event));
 		}
@@ -273,10 +294,6 @@ public class StackDivide<State> extends BusinessLogic {
 
 	
 	private Event askFavor() {
-//		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
-//				"We seem to both want the same resource, but there is an odd amount of it."
-//				+ " Would you mind giving me the larger part now and get the larger part next time?",
-//				(int) (1000 * game.getMultiplier()));
 		return EventHelper.message("We seem to both want the same resource, but there is an odd amount of it."
 				+ " Would you mind giving me the larger part now and get the larger part next time?");
 	}

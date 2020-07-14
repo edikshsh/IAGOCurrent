@@ -805,7 +805,7 @@ class AgentUtilsExtension
 		
 		int max = game.getNumIssues() + 1;
 		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
+//			System.out.println("Issue number " + i + " for the player is number " + playerPref.get(i));
 			if(freeResources[i] > 0 && playerPref.get(i) < max)
 			{
 				favoriteResource = i;
@@ -824,7 +824,7 @@ class AgentUtilsExtension
 		
 		int max = game.getNumIssues() + 1;
 		for(int i  = 0; i < game.getNumIssues(); i++) {
-			System.out.println("Issue number " + i + " for the agent is number " + agentPref.get(i));
+//			System.out.println("Issue number " + i + " for the agent is number " + agentPref.get(i));
 		
 			if(freeResources[i] > 0 && agentPref.get(i) < max)
 			{
