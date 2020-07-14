@@ -51,7 +51,7 @@ public class TestPlayer extends IAGOCoreVH {
 
 
 		// check to see that we do not loop the GAME_START recursively
-		if (e.getType() == Event.EventClass.GAME_START && lastEvent!= null && lastEvent.getType() != Event.EventClass.GAME_START) {
+		if (e.getType() == Event.EventClass.GAME_START && (lastEvent == null || (lastEvent!= null && lastEvent.getType() != Event.EventClass.GAME_START))) {
 			onNewRoundStart();
 		}
 		lastEvent = e;

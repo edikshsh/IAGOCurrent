@@ -37,34 +37,45 @@ class AgentUtilsExtension
 	int valueIndex=2;
 	int quantIndex=3;
 	
+	enum SortOrder{
+		ASCENDING,
+		DESCENDING
+	}
+	
 	public void initItemValuesMat() {
 		itemsMat = new int[game.getNumIssues()][4];
-		var values = game.getSimplePoints(StaticData.playerId);
+		var values = game.getSimplePoints(this.agent.getID());
 		var prefs = getMyOrdering();
 		String[] pluralNames = game.getIssuePluralNames();
 		for (int i=0; i<game.getNumIssues(); i++) {
-			for (int j=0; j<itemsMat[0].length; j++) {
-				itemsMat[i][realIndex] = i;
-				itemsMat[i][prefIndex] = prefs.get(i);
-				itemsMat[i][valueIndex] = game.getSimplePoints(StaticData.playerId).get(pluralNames[i]);
-				itemsMat[i][quantIndex] = game.getIssueQuants()[i];
-			}
+			itemsMat[i][realIndex] = i;
+			itemsMat[i][prefIndex] = prefs.get(i);
+			itemsMat[i][valueIndex] = game.getSimplePoints(this.agent.getID()).get(pluralNames[i]);
+			itemsMat[i][quantIndex] = game.getIssueQuants()[i];
 		}
 		
-		sortItemsMat(realIndex);
-		sortItemsMat(valueIndex);
+		sortItemsMat(realIndex, SortOrder.ASCENDING);
+		sortItemsMat(valueIndex, SortOrder.DESCENDING);
 	}
 	
 	// sorts the itemsMat in a descending order, by column
-	public int[][] sortItemsMat(int col)
+	public int[][] sortItemsMat(int col, SortOrder sortOrder)
 	{
 		int[] tempRow = new int[itemsMat[0].length];
 		for (int i=0; i<game.getNumIssues(); i++) {
 			for (int j=0; j<itemsMat[0].length; j++) {
-				if (itemsMat[i][col] < itemsMat[j][col]) {
-					tempRow = itemsMat[i];
-					itemsMat[i] = itemsMat[j];
-					itemsMat[j] = tempRow;
+				if (sortOrder == SortOrder.DESCENDING) {
+					if (itemsMat[i][col] > itemsMat[j][col]) {
+						tempRow = itemsMat[i];
+						itemsMat[i] = itemsMat[j];
+						itemsMat[j] = tempRow;
+					}
+				} else {
+					if (itemsMat[i][col] < itemsMat[j][col]) {
+						tempRow = itemsMat[i];
+						itemsMat[i] = itemsMat[j];
+						itemsMat[j] = tempRow;
+					}
 				}
 			}
 		}
@@ -894,6 +905,8 @@ class AgentUtilsExtension
 		return matrixToOffer(offerMat);
 		
 	}
+	
+	
 	public boolean isOfferGood(Offer lastOffer, Offer o) {
 
 		Offer allocated = lastOffer;//what we've already agreed on
@@ -906,8 +919,8 @@ class AgentUtilsExtension
 		int newOfferValueLost = pointsLostInOffer(o);
 		int oldOfferValueLost = pointsLostInOffer(allocated);
 		
-		ArrayList<Integer> myOrder = getMyOrdering();
-		int minValue = getPlayerFavoriteFreeResourceInOffer(o);
+		int minValue = getPointsOfAllocatedItems(allocated)/2;
+
 		
 //		var simplePoints = game.getSimplePoints(StaticData.playerId);
 //		ArrayList<Integer> agentResourceValues = new ArrayList<>();
@@ -916,7 +929,7 @@ class AgentUtilsExtension
 //		Collections.reverse(agentResourceValues);
 //		int agentBestResourceStackValue = agentResourceValues.get(0) * game.getIssueQuants()[];
 		
-		itemsMat = sortItemsMat(valueIndex);
+		itemsMat = sortItemsMat(valueIndex, SortOrder.DESCENDING);
 		int minIssues = itemsMat.length/2;
 		int prefValue = 0;
 		for(int i = 0; i< minIssues; i++) {
