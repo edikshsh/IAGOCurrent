@@ -35,9 +35,9 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private Ledger myLedger = new Ledger();
 	
 	StackDivide<StackDivide.State> stackDivideAlgorithm;
+	ResourceDivide<ResourceDivide.State> resourceDivideAlgorithm;
 	RoundStart<RoundStart.State> roundStartAlgorithm;
 	PlayerOffer<PlayerOffer.State> playerOffer1Algorithm;
-
 	
 	private final State firstState = State.ROUNDSTART;
 	State currState;
@@ -95,6 +95,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	public void resetOnNewRound() {
 		currState = firstState;
 		stackDivideAlgorithm = new StackDivide<StackDivide.State>(this.utils, this, this.game, (TestBehavior)behavior);
+		resourceDivideAlgorithm = new ResourceDivide<ResourceDivide.State>(this.utils, this, this.game, (TestBehavior)behavior);
 		roundStartAlgorithm = new RoundStart<RoundStart.State>(this.utils, this, this.game, (TestBehavior)behavior);
 		playerOffer1Algorithm = new PlayerOffer<PlayerOffer.State>(this.utils, this, this.game, (TestBehavior)behavior);
 
@@ -103,10 +104,12 @@ public abstract class IAGOCoreVH extends GeneralVH
 	private void initStateMachine() {
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
 		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
-		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
 		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.PLAYEROFFER);
-		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.FAILURE,State.STACKDIVIDE);
+		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.FAILURE,State.RESOURCEDIVIDE);
+		stateMachine.put(State.RESOURCEDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
+		stateMachine.put(State.RESOURCEDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.STACKDIVIDE);
 
 	}
 	
@@ -232,6 +235,14 @@ public abstract class IAGOCoreVH extends GeneralVH
 					resp.addAll(stateDefault(e));
 				}
 				break;
+			case RESOURCEDIVIDE:
+				resp = stateResourceDivide(e);
+				// if the algorithm requested the main flow to continue handling the event
+				if (resourceDivideAlgorithm.continueFlow) {
+					resourceDivideAlgorithm.continueFlow = false;
+					resp.addAll(stateDefault(e));
+				}
+				break;
 			case DEFAULT:
 				resp = stateDefault(e);
 				break;
@@ -242,6 +253,29 @@ public abstract class IAGOCoreVH extends GeneralVH
 //		firstActions.addAll(resp);
 		return resp;
 	}
+	private LinkedList<Event> stateResourceDivide(Event e){
+		LinkedList<Event> resp;
+		
+		if(resourceDivideAlgorithm.blState == BLState.START) {
+			resp = resourceDivideAlgorithm.start(e);
+			System.out.println("resourceDivideAlgorithm started");
+			return resp;
+		}
+		else if (resourceDivideAlgorithm.blState == BusinessLogic.BLState.ONGOING && resourceDivideAlgorithm.doesAcceptEvent(e)) {
+			resp = resourceDivideAlgorithm.start(e);
+			if (resourceDivideAlgorithm.blState != BusinessLogic.BLState.ONGOING) {
+				onChangeAlgorithms(resourceDivideAlgorithm);
+			}
+			return resp;
+		}
+		System.out.println("resourceDivideAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
+				" when on state " + resourceDivideAlgorithm.currState.toString() + ", BLState  =" + resourceDivideAlgorithm.blState);
+		
+		return stateDefault(e);
+	}
+
+	
+	
 	private LinkedList<Event> statePlayerOffer1(Event e){
 		LinkedList<Event> resp;
 		
@@ -447,23 +481,15 @@ public abstract class IAGOCoreVH extends GeneralVH
 			//approximation based on distributive case
 			int fairSplit = ((game.getNumIssues() + 1) * totalItems / 4);
 			//down to the wire, accept anything better than BATNA (less than 30 seconds from finishing time)
-			if(utils.myActualOfferValue(lastOffer.getOffer()) > game.getBATNA(getID()) && Integer.parseInt(lastTime.getMessage()) + 30 > game.getTotalTime()) 
-			{
-				Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-				resp.add(e0);
-				return resp;
-			}
-			//accept anything better than fair minus margin
+//			if(utils.myActualOfferValue(lastOffer.getOffer()) > game.getBATNA(getID()) && Integer.parseInt(lastTime.getMessage()) + 30 > game.getTotalTime()) 
+//			{
+//				Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
+//				resp.add(e0);
+//				return resp;
+//			}
 
-			if (behavior instanceof IAGOCompetitiveBehavior)
-			{
-				if(((IAGOCompetitiveBehavior) behavior).acceptOffer(lastOffer.getOffer())){
-					Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
-					resp.add(e0);
-					return resp;
-				}
-			}
-			else if(utils.myActualOfferValue(lastOffer.getOffer()) > fairSplit - behavior.getAcceptMargin()) //accept anything better than fair minus margin
+//			if(utils.myActualOfferValue(lastOffer.getOffer()) > fairSplit - behavior.getAcceptMargin()) //accept anything better than fair minus margin
+			if (utils.isOfferGood(behavior.getAllocated(), behavior.getAllocated()))
 			{
 				Event e0 = new Event(this.getID(), Event.EventClass.FORMAL_ACCEPT, 0);
 				resp.add(e0);
@@ -662,11 +688,6 @@ public abstract class IAGOCoreVH extends GeneralVH
 			resp.add(e0);
 		}
 
-
-		if(behavior instanceof IAGOCompetitiveBehavior && e.getSubClass() == Event.SubClass.BATNA_INFO)
-		{
-			((IAGOCompetitiveBehavior)behavior).resetConcessionCurve();
-		}
 
 		boolean offerRequested = (e.getSubClass() == Event.SubClass.OFFER_REQUEST_NEG || e.getSubClass() == Event.SubClass.OFFER_REQUEST_POS);
 					

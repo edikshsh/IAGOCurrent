@@ -34,5 +34,9 @@ public class EventHelper {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT,message,
 				(int) ((700 +  message.length() * 20)* game.getMultiplier()));
 	}
+	
+	public static Event formalAccept() {
+		return new Event(StaticData.playerId, Event.EventClass.FORMAL_ACCEPT, 0);
+	}
 
 }

@@ -137,6 +137,9 @@ public class PlayerOffer<State> extends BusinessLogic {
 		if (isOfferGood) {
 			resp.add(EventHelper.expression(Expression.HAPPY));
 			resp.add(EventHelper.offerAccept("Offer seems good"));
+			if (utils.isFullOffer(suggestedOffer)) {
+				resp.add(EventHelper.formalAccept());
+			}
 			blState = BLState.SUCCESS;
 		} else {
 			currState = State.COUNTEROFFER;
@@ -177,6 +180,9 @@ public class PlayerOffer<State> extends BusinessLogic {
 			resp.add(EventHelper.message("Yay"));
 
 			behavior.allocated = suggestedOffer;
+			if (utils.isFullOffer(suggestedOffer)) {
+				resp.add(EventHelper.formalAccept());
+			}
 			this.blState = BLState.SUCCESS;
 
 		// Stack divide offer was interrupted by the player by making a new offer
