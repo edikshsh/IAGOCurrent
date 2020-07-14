@@ -300,7 +300,7 @@ public class ResourceDivide<State> extends BusinessLogic {
 				for(int index = myPreferredIndices.length - 1; index>=0; index-- ){
 					if (table[1][myPreferredIndices[index]] != 0){
 						table[1][myPreferredIndices[index]]--;
-						table[0][myPreferredIndices[index]]++;
+						table[util.adversaryRow][myPreferredIndices[index]]++;
 						break;
 					}
 				}
@@ -311,7 +311,7 @@ public class ResourceDivide<State> extends BusinessLogic {
 				for(int index = 0; index<myPreferredIndices.length; index++ ){
 					if (table[1][myPreferredIndices[index]] != 0){
 						table[1][myPreferredIndices[index]]--;
-						table[2][myPreferredIndices[index]]++;
+						table[util.myRow][myPreferredIndices[index]]++;
 						break;
 					}
 				}
