@@ -38,6 +38,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 	ResourceDivide<ResourceDivide.State> resourceDivideAlgorithm;
 	RoundStart<RoundStart.State> roundStartAlgorithm;
 	PlayerOffer<PlayerOffer.State> playerOffer1Algorithm;
+	Lying<Lying.State> lyingAlgorithm;
 	
 	private final State firstState = State.ROUNDSTART;
 	State currState;
@@ -98,6 +99,7 @@ public abstract class IAGOCoreVH extends GeneralVH
 		resourceDivideAlgorithm = new ResourceDivide<ResourceDivide.State>(this.utils, this, this.game, (TestBehavior)behavior);
 		roundStartAlgorithm = new RoundStart<RoundStart.State>(this.utils, this, this.game, (TestBehavior)behavior);
 		playerOffer1Algorithm = new PlayerOffer<PlayerOffer.State>(this.utils, this, this.game, (TestBehavior)behavior);
+		lyingAlgorithm = new Lying<Lying.State>(this.utils, this, this.game, (TestBehavior)behavior);
 
 	}
 	
@@ -105,6 +107,9 @@ public abstract class IAGOCoreVH extends GeneralVH
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
 		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
+		stateMachine.put(State.LYING.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.PLAYEROFFER);
+		stateMachine.put(State.LYING.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
 		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.PLAYEROFFER);
 		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.FAILURE,State.RESOURCEDIVIDE);
