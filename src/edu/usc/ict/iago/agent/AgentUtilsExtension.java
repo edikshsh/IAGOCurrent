@@ -31,7 +31,7 @@ class AgentUtilsExtension
 	public int adversaryRow;
 	private boolean isFixedPie = false;
 	
-	int[][] itemsMat;
+	public static int[][] itemsMat;
 	int realIndex=0;
 	int prefIndex=1;
 	int valueIndex=2;

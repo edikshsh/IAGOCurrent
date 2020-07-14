@@ -36,7 +36,8 @@ public abstract class IAGOCoreVH extends GeneralVH
 	
 	StackDivide<StackDivide.State> stackDivideAlgorithm;
 	RoundStart<RoundStart.State> roundStartAlgorithm;
-	
+	PlayerOffer<PlayerOffer.State> playerOffer1Algorithm;
+
 	
 	private final State firstState = State.ROUNDSTART;
 	State currState;
@@ -95,14 +96,18 @@ public abstract class IAGOCoreVH extends GeneralVH
 		currState = firstState;
 		stackDivideAlgorithm = new StackDivide<StackDivide.State>(this.utils, this, this.game, (TestBehavior)behavior);
 		roundStartAlgorithm = new RoundStart<RoundStart.State>(this.utils, this, this.game, (TestBehavior)behavior);
+		playerOffer1Algorithm = new PlayerOffer<PlayerOffer.State>(this.utils, this, this.game, (TestBehavior)behavior);
+
 	}
 	
 	private void initStateMachine() {
 		stateMachine = new HashMap<String, IAGOCoreVH.State>();
 		stateMachine.put(State.ROUNDSTART.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.STACKDIVIDE);
 		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.DEFAULT);
-		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.DEFAULT);
-		
+		stateMachine.put(State.STACKDIVIDE.toString() + "__" + BusinessLogic.BLState.FAILURE,State.PLAYEROFFER);
+		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.SUCCESS,State.PLAYEROFFER);
+		stateMachine.put(State.PLAYEROFFER.toString() + "__" + BusinessLogic.BLState.FAILURE,State.STACKDIVIDE);
+
 	}
 	
 	/**
@@ -219,6 +224,14 @@ public abstract class IAGOCoreVH extends GeneralVH
 					resp.addAll(stateDefault(e));
 				}
 				break;
+			case PLAYEROFFER:
+				resp = statePlayerOffer1(e);
+				// if the algorithm requested the main flow to continue handling the event
+				if (playerOffer1Algorithm.continueFlow) {
+					playerOffer1Algorithm.continueFlow = false;
+					resp.addAll(stateDefault(e));
+				}
+				break;
 			case DEFAULT:
 				resp = stateDefault(e);
 				break;
@@ -229,7 +242,26 @@ public abstract class IAGOCoreVH extends GeneralVH
 //		firstActions.addAll(resp);
 		return resp;
 	}
-
+	private LinkedList<Event> statePlayerOffer1(Event e){
+		LinkedList<Event> resp;
+		
+		if(playerOffer1Algorithm.blState == BLState.START) {
+			resp = playerOffer1Algorithm.start(e);
+			System.out.println("playerOffer1Algorithm started");
+			return resp;
+		}
+		else if (playerOffer1Algorithm.blState == BusinessLogic.BLState.ONGOING && playerOffer1Algorithm.doesAcceptEvent(e)) {
+			resp = playerOffer1Algorithm.start(e);
+			if (playerOffer1Algorithm.blState != BusinessLogic.BLState.ONGOING) {
+				onChangeAlgorithms(playerOffer1Algorithm);
+			}
+			return resp;
+		}
+		System.out.println("stackDivideAlgorithm rejected event " + e.getType() + "__" + e.getSubClass() + 
+				" when on state " + stackDivideAlgorithm.currState.toString() + ", BLState  =" + stackDivideAlgorithm.blState);
+		
+		return stateDefault(e);
+	}
 
 	private LinkedList<Event> stateStackDivide(Event e){
 		LinkedList<Event> resp;
@@ -351,7 +383,9 @@ public abstract class IAGOCoreVH extends GeneralVH
 		//what to do when the player sends an offer
 		if(e.getType().equals(Event.EventClass.SEND_OFFER))
 		{
-			resp.addAll(defaultSendOffer(e));
+//			resp.addAll(defaultSendOffer(e));
+			playerOffer1Algorithm.changeToEvaluateOfferState();
+			resp.addAll(playerOffer1Algorithm.start(e));
 		}
 
 		//what to do when the player sends a message (including offer acceptances and rejections)

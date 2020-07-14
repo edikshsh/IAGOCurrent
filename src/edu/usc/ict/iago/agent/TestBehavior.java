@@ -125,8 +125,6 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 	}
 	
 
-	
-	// Doesn't work
 	@Override
 	public Offer getCounterOffer(Offer currOffer) {
 		

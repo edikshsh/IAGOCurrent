@@ -29,5 +29,10 @@ public class EventHelper {
 	public static Event offer(Offer offer) {
 		return new Event(StaticData.playerId, Event.EventClass.SEND_OFFER, offer, (int) (2000*game.getMultiplier()));
 	}
+	
+	public static Event offerAccept(String message) {
+		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT,message,
+				(int) ((700 +  message.length() * 20)* game.getMultiplier()));
+	}
 
 }
