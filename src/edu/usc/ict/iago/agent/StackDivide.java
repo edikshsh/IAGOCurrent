@@ -24,7 +24,8 @@ public class StackDivide<State> extends BusinessLogic {
 	
 	enum State {
 		 ASKFAVORITE,
-		 MAKEDEAL,
+		 MAKEDEAL1,
+		 MAKEDEAL2,
 	 	 END
 	 }
 	
@@ -43,10 +44,13 @@ public class StackDivide<State> extends BusinessLogic {
 		this.behavior = behavior;
 		reset();
 		this.stateEventController = new StateEventController<StackDivide.State>();
-		stateEventController.massMachineStates(State.ASKFAVORITE, State.MAKEDEAL, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO, State.class);
-		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, State.class);
-		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, State.class);
-		stateEventController.massMachineStates(State.MAKEDEAL, State.END, Event.EventClass.SEND_OFFER, null, State.class);
+		stateEventController.massMachineStates(State.ASKFAVORITE, State.MAKEDEAL1, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO, State.class);
+		
+		stateEventController.massMachineStates(State.MAKEDEAL1, State.MAKEDEAL2, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_INFO, State.class);
+
+		stateEventController.massMachineStates(State.MAKEDEAL2, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_ACCEPT, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL2, State.END, Event.EventClass.SEND_MESSAGE, Event.SubClass.OFFER_REJECT, State.class);
+		stateEventController.massMachineStates(State.MAKEDEAL2, State.END, Event.EventClass.SEND_OFFER, null, State.class);
 
 	}
 	
@@ -105,8 +109,11 @@ public class StackDivide<State> extends BusinessLogic {
 			case ASKFAVORITE:
 				resp = stateAskFavorite(e);
 				break;
-			case MAKEDEAL:	
-				resp = stateMakeDeal(e);
+			case MAKEDEAL1:	
+				resp = stateMakeDeal1(e);
+				break;
+			case MAKEDEAL2:	
+				resp = stateMakeDeal2(e);
 				break;
 			case END:
 				resp = stateEnd(e);
@@ -127,8 +134,9 @@ public class StackDivide<State> extends BusinessLogic {
 		return resp;
 	}
 	
+	
 	//Started an offer
-	private LinkedList<Event> stateMakeDeal(Event event){
+	private LinkedList<Event> stateMakeDeal1(Event event){
 		LinkedList<Event> resp = new LinkedList<Event>();
 		if (event.getPreference()!= null && !event.getPreference().isQuery()) {
 			utils.addPref(event.getPreference());
@@ -136,12 +144,41 @@ public class StackDivide<State> extends BusinessLogic {
 			
 			if (event.getPreference().getRelation() == Relation.BEST) {
 				resp.add(EventHelper.message("Nice, now I  have all I need to divide the resources"));
+				currState = State.MAKEDEAL2;
+				resp.addAll(makeDeal(event));
 			} else {
-				resp.add(EventHelper.message("Well, close enough I guess"));
+				resp.add(EventHelper.message("Sorry, It's a bit hard to tell what your favorite item is, although it does get me closer to the truth"));
+				resp.add(EventHelper.message("Can you please give some more info?"));
 			}
 		}
+		return resp;
+	}
 
-		
+	private LinkedList<Event> stateMakeDeal2(Event event){
+		LinkedList<Event> resp = new LinkedList<Event>();
+		if (event.getPreference()!= null && !event.getPreference().isQuery()) {
+			utils.addPref(event.getPreference());
+			utils.reconcileContradictionsAll();
+			
+			if (event.getPreference().getRelation() == Relation.BEST) {
+				resp.add(EventHelper.expression(Expression.HAPPY));
+				resp.add(EventHelper.message("Nice, now I  have all I need to divide the resources"));
+			} else {
+				resp.add(EventHelper.expression(Expression.NEUTRAL));
+				resp.add(EventHelper.message("Well, close enough I guess?"));
+			}
+			resp.addAll(makeDeal(event));
+		}
+		return resp;
+	}
+	
+	
+	
+	
+	//Started an offer
+	private LinkedList<Event> makeDeal(Event event){
+		LinkedList<Event> resp = new LinkedList<Event>();
+
 		// Get the last allocated offer, and continue from there
 		Offer offer = behavior.allocated;
 		
