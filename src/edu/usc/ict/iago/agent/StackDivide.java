@@ -3,11 +3,13 @@ package edu.usc.ict.iago.agent;
 import java.util.HashMap;
 import java.util.LinkedList;
 
+import edu.usc.ict.iago.agent.EventHelper.Expression;
 import edu.usc.ict.iago.utils.Event;
 import edu.usc.ict.iago.utils.Event.EventClass;
 import edu.usc.ict.iago.utils.Event.SubClass;
 import edu.usc.ict.iago.utils.GameSpec;
 import edu.usc.ict.iago.utils.Offer;
+import edu.usc.ict.iago.utils.Preference.Relation;
 
 public class StackDivide<State> extends BusinessLogic {
 	
@@ -118,9 +120,9 @@ public class StackDivide<State> extends BusinessLogic {
 	private LinkedList<Event> stateAskFavorite(Event event){
 		System.out.println("StackDivide ask pref");
 		LinkedList<Event> resp = new LinkedList<Event>();
-		Event askPref = new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.PREF_REQUEST,
-				"I would like to divide the free resources as fairly as possible, can you please tell me what is your favorite resource?",
-				(int) (1000 * game.getMultiplier()));
+		Event askPref = EventHelper.message("I would like to divide the free resources as fairly as possible,"
+				+ " can you please tell me what is your favorite resource?");
+				
 		resp.add(askPref);
 		return resp;
 	}
@@ -131,6 +133,12 @@ public class StackDivide<State> extends BusinessLogic {
 		if (event.getPreference()!= null && !event.getPreference().isQuery()) {
 			utils.addPref(event.getPreference());
 			utils.reconcileContradictionsAll();
+			
+			if (event.getPreference().getRelation() == Relation.BEST) {
+				resp.add(EventHelper.message("Nice, now I  have all I need to divide the resources"));
+			} else {
+				resp.add(EventHelper.message("Well, close enough I guess"));
+			}
 		}
 
 		
@@ -185,7 +193,7 @@ public class StackDivide<State> extends BusinessLogic {
 		offerMat[utils.freeRow][agentFave] -= itemsGivenToAgent;
 		
 		Offer stackOffer = utils.matrixToOffer(offerMat);
-		resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_OFFER, stackOffer, (int) (700*game.getMultiplier())));
+		resp.add(EventHelper.offer(stackOffer));
 		stateStartSuggestedOffer = stackOffer;
 			
 		
@@ -199,53 +207,47 @@ public class StackDivide<State> extends BusinessLogic {
 		// Stack divide offer was rejected by the player
 		if (e.getSubClass() == Event.SubClass.OFFER_REJECT) {
 			
-			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
-					"Aww",(int) (1000 * game.getMultiplier())));
+			resp.add(EventHelper.expression(Expression.SAD));
+			resp.add(EventHelper.message("Aww"));
 
-			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "sad", 2000, (int) (100*game.getMultiplier())));	
 			this.blState = BLState.FAILURE;
 			
 		// Stack divide offer was accepted by the player
-		} else if (e.getSubClass() == Event.SubClass.OFFER_ACCEPT){
-			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_POS,
-					"Yay",(int) (1000 * game.getMultiplier())));
+		} else if (e.getSubClass() == Event.SubClass.OFFER_ACCEPT){	
+			
+			resp.add(EventHelper.expression(Expression.HAPPY));
+			resp.add(EventHelper.message("Yay"));
 
-			resp.add(new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "happy", 2000, (int) (100*game.getMultiplier())));	
 			behavior.allocated = stateStartSuggestedOffer;
 			this.blState = BLState.SUCCESS;
 
 		// Stack divide offer was interrupted by the player by making a new offer
 		} else {
-			Event rudeTxt = new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.GENERIC_NEG,
-					"How rude!",
-					(int) (1000 * game.getMultiplier()));
-//			Event rudeExpression = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "surprised", 2000, (int) (100*game.getMultiplier()));
-			Event rudeExpression2 = new Event(StaticData.playerId, Event.EventClass.SEND_EXPRESSION, "angry", 2000, (int) (100*game.getMultiplier()));
+			resp.add(EventHelper.expression(Expression.ANGRY));
+			resp.add(EventHelper.message("How rude!"));
 
-//			resp.add(rudeExpression);
-			resp.add(rudeExpression2);
-
-			resp.add(rudeTxt);
 			continueFlow=true; // Tell the main flow that we want for it to continue handling the event (probably with default bl)
 			this.blState = BLState.FAILURE;
 
 		}
 		return resp;
 	}
+	
 
 	
 	private Event askFavor() {
-		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
-				"We seem to both want the same resource, but there is an odd amount of it."
-				+ " Would you mind giving me the larger part now and get the larger part next time?",
-				(int) (1000 * game.getMultiplier()));
+//		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
+//				"We seem to both want the same resource, but there is an odd amount of it."
+//				+ " Would you mind giving me the larger part now and get the larger part next time?",
+//				(int) (1000 * game.getMultiplier()));
+		return EventHelper.message("We seem to both want the same resource, but there is an odd amount of it."
+				+ " Would you mind giving me the larger part now and get the larger part next time?");
 	}
 	
 	private Event returnFavor() {
-		return new Event(StaticData.playerId, Event.EventClass.SEND_MESSAGE, Event.SubClass.NONE,
-				"We seem to both want the same resource, but there is an odd amount of it."
-				+ " It's your turn to get the larger part, enjoy :)",
-				(int) (1000 * game.getMultiplier()));
+		
+				return EventHelper.message("We seem to both want the same resource, but there is an odd amount of it."
+						+ " It's your turn to get the larger part, enjoy :)");
 	}
 
 }

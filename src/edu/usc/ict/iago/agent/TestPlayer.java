@@ -34,8 +34,8 @@ public class TestPlayer extends IAGOCoreVH {
 		super("Test", game, session, behavior = new TestBehavior(TestBehavior.LedgerBehavior.FAIR), new TestExpression(), 
 				new TestMessage(false, false, TestBehavior.LedgerBehavior.FAIR));	
 
-
-		super.safeForMultiAgent = true;
+		EventHelper.game = game;
+		super.safeForMultiAgent = false;
 		
 	}
 	

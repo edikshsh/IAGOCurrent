@@ -143,9 +143,9 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		System.out.println("Last offer = " + allocated);
 		System.out.println("Suggested offer = " + currOffer);
 //		System.out.println("Counter offer = " + counterOffer);
-
+		boolean isOfferGood = false;
 //		while(!utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer)) {
-		while(!utils.isOfferGood(allocated, counterOffer) && currBestResource < game.getNumIssues()) {
+		while(!(isOfferGood = utils.isOfferGood(allocated, counterOffer)) && currBestResource < game.getNumIssues()) {
 
 			int ourBestIndex = myOrder.indexOf(currBestResource);
 			if(currOfferMatrix[utils.freeRow][ourBestIndex] > 0 || currOfferMatrix[utils.adversaryRow][ourBestIndex] > 0) {
@@ -169,7 +169,7 @@ public class TestBehavior extends IAGOCoreBehavior implements BehaviorPolicy {
 		lastGoodCounterOffer.setOffer(counterOffer);
 		counterOffer.setOffer(currOffer);
 //		while(utils.isOfferGood(currOffer, counterOffer) && !utils.isFullOffer(counterOffer) && numOfIssuesTaken > 0) {
-		while(utils.isOfferGood(allocated, counterOffer) && currBestResource < game.getNumIssues()) {
+		while((isOfferGood = utils.isOfferGood(allocated, counterOffer)) && currBestResource < game.getNumIssues()) {
 	
 			int theirBestIndex = theirOrder.indexOf(currBestResource);
 			if(currOfferMatrix[utils.freeRow][theirBestIndex] > 0 || currOfferMatrix[utils.myRow][theirBestIndex] > 0) {
